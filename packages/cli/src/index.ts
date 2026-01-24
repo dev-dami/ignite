@@ -11,7 +11,7 @@ const program = new Command();
 program
   .name('ignite')
   .description('A local execution framework for JavaScript microservices with pre-execution safety analysis')
-  .version('0.4.0');
+  .version('0.5.0');
 
 program
   .command('init <name>')
