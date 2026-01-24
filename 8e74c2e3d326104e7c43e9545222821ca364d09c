@@ -1,0 +1,23 @@
+install.sh
+  e2f5e23d3518aea6 17-21,24-26,31-33,64,156,172-178
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.37",
+  "base_commit_sha": "8e74c2e3d326104e7c43e9545222821ca364d09c",
+  "prompts": {
+    "e2f5e23d3518aea6": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_4113c971bffexkf5GEd5k06eJj",
+        "model": "anthropic/claude-opus-4-5"
+      },
+      "human_author": "dev-dami <damiade5banjo@gmail.com>",
+      "messages": [],
+      "total_additions": 20,
+      "total_deletions": 20,
+      "accepted_lines": 20,
+      "overriden_lines": 0
+    }
+  }
+}
