@@ -1,0 +1,27 @@
+README.md
+  e2f5e23d3518aea6 59
+docs/walkthrough.md
+  e2f5e23d3518aea6 336
+docs/getting-started.md
+  e2f5e23d3518aea6 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.37",
+  "base_commit_sha": "a15f7535636f9c8c9a9c024d83f3b17eba6ac209",
+  "prompts": {
+    "e2f5e23d3518aea6": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_4113c971bffexkf5GEd5k06eJj",
+        "model": "anthropic/claude-opus-4-5"
+      },
+      "human_author": "dev-dami <damiade5banjo@gmail.com>",
+      "messages": [],
+      "total_additions": 3,
+      "total_deletions": 3,
+      "accepted_lines": 3,
+      "overriden_lines": 0
+    }
+  }
+}
