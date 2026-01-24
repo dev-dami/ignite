@@ -1,0 +1,23 @@
+install.sh
+  e2f5e23d3518aea6 7,14,18,20-23,26-27,38-60,62-71,79,84,89-117,120-147,149-169,173-184,187-202,205-206,209-213,215-217,220-224,226-228,233-251,253-269,271-293,299,310,314,318,323-324,326,328-332,334-337,342-343,345-374
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.37",
+  "base_commit_sha": "7779d4b73b3e22c5df7e0642477cdf7ca3788463",
+  "prompts": {
+    "e2f5e23d3518aea6": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_4113c971bffexkf5GEd5k06eJj",
+        "model": "anthropic/claude-haiku-4-5"
+      },
+      "human_author": "dev-dami <damiade5banjo@gmail.com>",
+      "messages": [],
+      "total_additions": 283,
+      "total_deletions": 114,
+      "accepted_lines": 281,
+      "overriden_lines": 0
+    }
+  }
+}
