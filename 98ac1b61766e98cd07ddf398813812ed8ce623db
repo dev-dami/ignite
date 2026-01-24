@@ -1,0 +1,33 @@
+CONTRIBUTING.md
+  e2f5e23d3518aea6 1-114
+.github/PULL_REQUEST_TEMPLATE.md
+  e2f5e23d3518aea6 1-17
+CODE_OF_CONDUCT.md
+  e2f5e23d3518aea6 1-38
+.github/ISSUE_TEMPLATE/bug_report.md
+  e2f5e23d3518aea6 1-30
+.github/ISSUE_TEMPLATE/feature_request.md
+  e2f5e23d3518aea6 1-19
+LICENSE
+  e2f5e23d3518aea6 1-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.37",
+  "base_commit_sha": "98ac1b61766e98cd07ddf398813812ed8ce623db",
+  "prompts": {
+    "e2f5e23d3518aea6": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_4113c971bffexkf5GEd5k06eJj",
+        "model": "anthropic/claude-opus-4-5"
+      },
+      "human_author": "dev-dami <damiade5banjo@gmail.com>",
+      "messages": [],
+      "total_additions": 239,
+      "total_deletions": 0,
+      "accepted_lines": 239,
+      "overriden_lines": 0
+    }
+  }
+}
