@@ -1,0 +1,25 @@
+docs/threat-model.md
+  e2f5e23d3518aea6 1-199
+scripts/benchmark.ts
+  e2f5e23d3518aea6 1-274
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.37",
+  "base_commit_sha": "9e277e8d3f223f4975cb4451fae46b3b5ba874ea",
+  "prompts": {
+    "e2f5e23d3518aea6": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_4113c971bffexkf5GEd5k06eJj",
+        "model": "anthropic/claude-opus-4-5"
+      },
+      "human_author": "dev-dami <damiade5banjo@gmail.com>",
+      "messages": [],
+      "total_additions": 486,
+      "total_deletions": 11,
+      "accepted_lines": 473,
+      "overriden_lines": 1
+    }
+  }
+}
