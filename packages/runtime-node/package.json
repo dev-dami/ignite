@@ -1,0 +1,6 @@
+{
+  "name": "@ignite/runtime-node",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Node.js runtime adapter for Ignite"
+}
