@@ -1,5 +1,7 @@
 FROM node:20-alpine
 
+RUN adduser -D -u 1001 ignite
+
 WORKDIR /app
 
 COPY package*.json ./
@@ -7,7 +9,7 @@ RUN if [ -f package-lock.json ]; then npm ci --only=production; \
     elif [ -f package.json ]; then npm install --only=production; \
     fi
 
-COPY . .
+COPY --chown=ignite:ignite . .
 
 ARG ENTRY_FILE=index.js
 ENV ENTRY_FILE=${ENTRY_FILE}
@@ -31,6 +33,8 @@ RUN printf '%s\n' \
   '  process.stderr.write("IGNITE_INIT_TIME:" + initTime + "\\n");' \
   '  process.stderr.write("IGNITE_MEMORY_MB:" + mem + "\\n");' \
   '});' \
-  > /entrypoint.mjs
+  > /entrypoint.mjs && chown ignite:ignite /entrypoint.mjs
+
+USER ignite
 
 CMD ["node", "/entrypoint.mjs"]

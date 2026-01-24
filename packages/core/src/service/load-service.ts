@@ -66,6 +66,12 @@ function validateServiceConfig(config: unknown): ServiceValidation {
 
   if (typeof service['name'] !== 'string' || !service['name']) {
     errors.push('service.name is required');
+  } else {
+    const name = service['name'] as string;
+    const dockerNameRegex = /^[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$|^[a-z0-9]$/;
+    if (!dockerNameRegex.test(name)) {
+      errors.push('service.name must be lowercase alphanumeric with hyphens (1-63 chars, Docker compatible)');
+    }
   }
 
   const runtime = service['runtime'];

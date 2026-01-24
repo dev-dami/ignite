@@ -4,6 +4,7 @@ export interface ServiceExecutionRequest {
   input?: unknown;
   skipPreflight?: boolean;
   skipBuild?: boolean;
+  audit?: boolean;
 }
 
 export interface ServiceExecutionResponse {

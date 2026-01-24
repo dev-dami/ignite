@@ -1,5 +1,6 @@
 import { Elysia, t } from 'elysia';
 import { cors } from '@elysiajs/cors';
+import { join, resolve } from 'node:path';
 import { loadService, executeService, runPreflight, getImageName, buildServiceImage } from '@ignite/core';
 import { logger } from '@ignite/shared';
 import type {
@@ -14,19 +15,101 @@ export interface ServerOptions {
   port?: number;
   host?: string;
   servicesPath?: string;
+  /** API key for bearer token authentication. If not set, auth is disabled (NOT RECOMMENDED for production) */
+  apiKey?: string;
+  /** Rate limit: max requests per window (default: 60) */
+  rateLimit?: number;
+  /** Rate limit window in milliseconds (default: 60000 = 1 minute) */
+  rateLimitWindow?: number;
+}
+
+// Service name validation: lowercase alphanumeric with hyphens, 2-63 chars (Docker compatible)
+const SERVICE_NAME_REGEX = /^[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$|^[a-z0-9]$/;
+
+/**
+ * Validates and sanitizes service name to prevent path traversal and ensure Docker compatibility
+ */
+function validateServiceName(name: string): { valid: boolean; error?: string } {
+  if (!name || typeof name !== 'string') {
+    return { valid: false, error: 'Service name is required' };
+  }
+  
+  // Block path traversal attempts
+  if (name.includes('..') || name.includes('/') || name.includes('\\')) {
+    return { valid: false, error: 'Service name contains invalid characters' };
+  }
+  
+  // Validate Docker-compatible naming
+  if (!SERVICE_NAME_REGEX.test(name)) {
+    return { valid: false, error: 'Service name must be lowercase alphanumeric with hyphens (1-63 chars)' };
+  }
+  
+  return { valid: true };
+}
+
+/**
+ * Simple in-memory rate limiter
+ */
+function createRateLimiter(maxRequests: number, windowMs: number) {
+  const requests = new Map<string, { count: number; resetTime: number }>();
+  
+  return {
+    check(clientId: string): { allowed: boolean; retryAfter?: number } {
+      const now = Date.now();
+      const record = requests.get(clientId);
+      
+      if (!record || now > record.resetTime) {
+        requests.set(clientId, { count: 1, resetTime: now + windowMs });
+        return { allowed: true };
+      }
+      
+      if (record.count >= maxRequests) {
+        return { allowed: false, retryAfter: Math.ceil((record.resetTime - now) / 1000) };
+      }
+      
+      record.count++;
+      return { allowed: true };
+    },
+    
+    // Cleanup old entries periodically
+    cleanup() {
+      const now = Date.now();
+      for (const [key, record] of requests.entries()) {
+        if (now > record.resetTime) {
+          requests.delete(key);
+        }
+      }
+    }
+  };
 }
 
 const startTime = Date.now();
 
 export function createServer(options: ServerOptions = {}) {
-  const { port = 3000, host = 'localhost', servicesPath = './services' } = options;
+  const { 
+    port = 3000, 
+    host = 'localhost', 
+    servicesPath = './services',
+    apiKey,
+    rateLimit = 60,
+    rateLimitWindow = 60000,
+  } = options;
+
+  const resolvedServicesPath = resolve(servicesPath);
+  const rateLimiter = createRateLimiter(rateLimit, rateLimitWindow);
+  
+  const cleanupInterval = setInterval(() => rateLimiter.cleanup(), rateLimitWindow);
 
   const app = new Elysia()
     .use(cors())
     .onError(({ code, error, set }) => {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.error(`Request error: ${errorMessage}`);
-      set.status = code === 'NOT_FOUND' ? 404 : 500;
+      if (!errorMessage.includes('Rate limit') && !errorMessage.includes('Unauthorized')) {
+        logger.error(`Request error: ${errorMessage}`);
+      }
+      if (set.status === 200) {
+        set.status = code === 'NOT_FOUND' ? 404 : 500;
+      }
       return {
         error: errorMessage,
         code: String(code),
@@ -37,14 +120,46 @@ export function createServer(options: ServerOptions = {}) {
       version: '0.1.0',
       uptime: Math.floor((Date.now() - startTime) / 1000),
     }))
+    .derive(({ request, set }) => {
+      const clientIp = request.headers.get('x-forwarded-for') || 'unknown';
+      const rateLimitResult = rateLimiter.check(clientIp);
+      
+      if (!rateLimitResult.allowed) {
+        set.status = 429;
+        set.headers['Retry-After'] = String(rateLimitResult.retryAfter);
+        throw new Error(`Rate limit exceeded. Retry after ${rateLimitResult.retryAfter} seconds`);
+      }
+      
+      if (apiKey) {
+        const authHeader = request.headers.get('authorization');
+        const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+        
+        if (!token || token !== apiKey) {
+          set.status = 401;
+          throw new Error('Unauthorized: Invalid or missing API key');
+        }
+      }
+      
+      return {};
+    })
     .post(
       '/services/:serviceName/execute',
       async ({ params, body, set }): Promise<ServiceExecutionResponse> => {
         const { serviceName } = params;
-        const { input, skipPreflight, skipBuild } = body as ServiceExecutionRequest;
+        const { input, skipPreflight, skipBuild, audit } = body as ServiceExecutionRequest;
+
+        const validation = validateServiceName(serviceName);
+        if (!validation.valid) {
+          set.status = 400;
+          return {
+            success: false,
+            serviceName,
+            error: validation.error,
+          };
+        }
 
         try {
-          const servicePath = `${servicesPath}/${serviceName}`;
+          const servicePath = join(resolvedServicesPath, serviceName);
           const service = await loadService(servicePath);
 
           let preflightResult = undefined;
@@ -66,7 +181,7 @@ export function createServer(options: ServerOptions = {}) {
             }
           }
 
-          const metrics = await executeService(service, { input, skipBuild });
+          const metrics = await executeService(service, { input, skipBuild, audit });
 
           return {
             success: true,
@@ -90,14 +205,24 @@ export function createServer(options: ServerOptions = {}) {
           input: t.Optional(t.Unknown()),
           skipPreflight: t.Optional(t.Boolean()),
           skipBuild: t.Optional(t.Boolean()),
+          audit: t.Optional(t.Boolean()),
         }),
       }
     )
     .get('/services/:serviceName/preflight', async ({ params, set }): Promise<ServicePreflightResponse | ErrorResponse> => {
       const { serviceName } = params;
 
+      const validation = validateServiceName(serviceName);
+      if (!validation.valid) {
+        set.status = 400;
+        return {
+          error: validation.error!,
+          code: 'INVALID_SERVICE_NAME',
+        };
+      }
+
       try {
-        const servicePath = `${servicesPath}/${serviceName}`;
+        const servicePath = join(resolvedServicesPath, serviceName);
         const service = await loadService(servicePath);
         const imageName = getImageName(service.config.service.name);
 
@@ -121,7 +246,7 @@ export function createServer(options: ServerOptions = {}) {
     .get('/services', async ({ set }): Promise<{ services: string[] } | ErrorResponse> => {
       try {
         const { readdir } = await import('node:fs/promises');
-        const entries = await readdir(servicesPath, { withFileTypes: true });
+        const entries = await readdir(resolvedServicesPath, { withFileTypes: true });
         const services = entries.filter((e) => e.isDirectory()).map((e) => e.name);
         return { services };
       } catch (err) {
@@ -146,6 +271,7 @@ export function createServer(options: ServerOptions = {}) {
     },
     stop: () => {
       if (isRunning) {
+        clearInterval(cleanupInterval);
         app.stop();
         isRunning = false;
         logger.info('Ignite HTTP server stopped');
