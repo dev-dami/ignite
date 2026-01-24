@@ -16,7 +16,8 @@
     "test": "NODE_OPTIONS='--experimental-vm-modules' jest --runInBand",
     "test:unit": "NODE_OPTIONS='--experimental-vm-modules' jest --testPathIgnorePatterns=docker-execution --testPathIgnorePatterns=server",
     "test:watch": "NODE_OPTIONS='--experimental-vm-modules' jest --watch",
-    "test:coverage": "NODE_OPTIONS='--experimental-vm-modules' jest --coverage --runInBand"
+    "test:coverage": "NODE_OPTIONS='--experimental-vm-modules' jest --coverage --runInBand",
+    "release": "bun run scripts/release.ts"
   },
   "devDependencies": {
     "@elysiajs/cors": "^1.4.1",
