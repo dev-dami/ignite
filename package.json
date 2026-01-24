@@ -8,7 +8,7 @@
     "examples/*"
   ],
   "scripts": {
-    "build": "bun run --filter './packages/*' build",
+    "build": "bun run --cwd packages/shared build && bun run --cwd packages/core build && bun run --cwd packages/http build && bun run --cwd packages/cli build",
     "build:binaries": "bun run scripts/build-binaries.ts",
     "dev": "bun run --filter './packages/*' dev",
     "clean": "bun run --filter './packages/*' clean && rm -rf bin dist",
