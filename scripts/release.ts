@@ -71,9 +71,28 @@ async function getCurrentVersion(): Promise<string> {
 }
 
 async function updatePackageVersion(version: string): Promise<void> {
-  const pkg = await Bun.file("package.json").json();
-  pkg.version = version;
-  await Bun.write("package.json", JSON.stringify(pkg, null, 2) + "\n");
+  const packages = [
+    "package.json",
+    "packages/cli/package.json",
+    "packages/core/package.json",
+    "packages/http/package.json",
+    "packages/shared/package.json",
+    "packages/runtime-bun/package.json",
+    "packages/runtime-node/package.json",
+  ];
+  
+  for (const pkgPath of packages) {
+    try {
+      const pkg = await Bun.file(pkgPath).json();
+      pkg.version = version;
+      await Bun.write(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
+    } catch {}
+  }
+  
+  const cliIndexPath = "packages/cli/src/index.ts";
+  let cliIndex = await Bun.file(cliIndexPath).text();
+  cliIndex = cliIndex.replace(/\.version\(['"][\d.]+['"]\)/, `.version('${version}')`);
+  await Bun.write(cliIndexPath, cliIndex);
 }
 
 async function main() {
@@ -119,7 +138,7 @@ async function main() {
   await updatePackageVersion(newVersion);
 
   console.log("📦 Committing...");
-  await $`git add package.json`;
+  await $`git add package.json packages/*/package.json packages/cli/src/index.ts`;
   await $`git commit -m "chore(release): ${tag}"`;
 
   console.log("🏷️  Creating tag...");

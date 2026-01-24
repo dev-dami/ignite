@@ -32,7 +32,10 @@ async function handler(event) {
 }
 
 handler(input)
-  .then(result => console.log(JSON.stringify(result, null, 2)))
+  .then(result => {
+    console.log(JSON.stringify(result, null, 2));
+    process.exit(0);
+  })
   .catch(err => {
     console.error(err);
     process.exit(1);
@@ -78,7 +81,10 @@ async function handler(event: Event): Promise<Response> {
 }
 
 handler(input)
-  .then(result => console.log(JSON.stringify(result, null, 2)))
+  .then(result => {
+    console.log(JSON.stringify(result, null, 2));
+    process.exit(0);
+  })
   .catch(err => {
     console.error(err);
     process.exit(1);
