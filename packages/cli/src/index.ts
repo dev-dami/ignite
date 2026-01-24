@@ -26,6 +26,7 @@ program
   .option('-i, --input <json>', 'JSON input to pass to the service')
   .option('--skip-preflight', 'Skip preflight checks before execution')
   .option('--json', 'Output results as JSON')
+  .option('--audit', 'Run with security audit (blocks network, read-only filesystem)')
   .action(runCommand);
 
 program

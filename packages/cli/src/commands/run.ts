@@ -1,10 +1,11 @@
-import { loadService, executeService, runPreflight, createReport, formatReportAsText, getImageName, buildServiceImage } from '@ignite/core';
+import { loadService, executeService, runPreflight, createReport, formatReportAsText, getImageName, buildServiceImage, parseAuditFromOutput, formatSecurityAudit, DEFAULT_POLICY } from '@ignite/core';
 import { logger, ConfigError } from '@ignite/shared';
 
 interface RunOptions {
   input?: string;
   skipPreflight?: boolean;
   json?: boolean;
+  audit?: boolean;
 }
 
 export async function runCommand(servicePath: string, options: RunOptions): Promise<void> {
@@ -34,7 +35,7 @@ export async function runCommand(servicePath: string, options: RunOptions): Prom
       process.exit(1);
     }
 
-    const metrics = await executeService(service, { input, skipBuild: true });
+    const metrics = await executeService(service, { input, skipBuild: true, audit: options.audit });
 
     const report = createReport(preflightResult, metrics);
 
@@ -44,7 +45,12 @@ export async function runCommand(servicePath: string, options: RunOptions): Prom
       console.log(formatReportAsText(report));
     }
 
-    if (metrics.exitCode !== 0) {
+    if (options.audit) {
+      const audit = parseAuditFromOutput(metrics.stdout, metrics.stderr, DEFAULT_POLICY);
+      console.log(formatSecurityAudit(audit));
+    }
+
+    if (metrics.exitCode !== 0 && metrics.exitCode !== 124) {
       process.exit(metrics.exitCode);
     }
   } catch (err) {

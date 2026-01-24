@@ -49,6 +49,7 @@ export interface ExecuteOptions {
   input?: unknown;
   env?: Record<string, string>;
   skipBuild?: boolean;
+  audit?: boolean;
 }
 
 interface ExecutionState {
@@ -99,6 +100,13 @@ export async function executeService(
       IGNITE_INPUT: options.input ? JSON.stringify(options.input) : '',
       NODE_ENV: 'production',
     },
+    security: options.audit ? {
+      networkDisabled: true,
+      readOnlyRootfs: true,
+      dropCapabilities: true,
+      noNewPrivileges: true,
+      tmpfsPaths: ['/tmp'],
+    } : undefined,
   });
 
   const metrics = parseMetrics(runResult, isColdStart);

@@ -15,3 +15,6 @@ export { generateWarnings } from './report/warnings.js';
 
 export { getRuntimeConfig, isValidRuntime, getSupportedRuntimes } from './runtime/runtime-registry.js';
 export type { RuntimeConfig } from './runtime/runtime-registry.js';
+
+export { parseAuditFromOutput, formatSecurityAudit, DEFAULT_POLICY } from './security/index.js';
+export type { SecurityPolicy, SecurityAudit, SecurityEvent, SecuritySummary } from './security/index.js';

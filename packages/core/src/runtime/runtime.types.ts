@@ -14,6 +14,15 @@ export interface DockerRunOptions {
   volumes: VolumeMount[];
   env: Record<string, string>;
   command?: string[];
+  security?: SecurityOptions;
+}
+
+export interface SecurityOptions {
+  networkDisabled?: boolean;
+  readOnlyRootfs?: boolean;
+  dropCapabilities?: boolean;
+  noNewPrivileges?: boolean;
+  tmpfsPaths?: string[];
 }
 
 export interface VolumeMount {

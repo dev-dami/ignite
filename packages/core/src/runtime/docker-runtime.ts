@@ -47,6 +47,26 @@ export async function dockerRun(options: DockerRunOptions): Promise<DockerRunRes
     options.workDir,
   ];
 
+  if (options.security) {
+    if (options.security.networkDisabled) {
+      args.push('--network', 'none');
+    }
+    if (options.security.readOnlyRootfs) {
+      args.push('--read-only');
+    }
+    if (options.security.dropCapabilities) {
+      args.push('--cap-drop', 'ALL');
+    }
+    if (options.security.noNewPrivileges) {
+      args.push('--security-opt', 'no-new-privileges');
+    }
+    if (options.security.tmpfsPaths) {
+      for (const tmpfsPath of options.security.tmpfsPaths) {
+        args.push('--tmpfs', `${tmpfsPath}:rw,noexec,nosuid,size=64m`);
+      }
+    }
+  }
+
   for (const volume of options.volumes) {
     const mode = volume.readonly ? 'ro' : 'rw';
     args.push('-v', `${volume.hostPath}:${volume.containerPath}:${mode}`);
