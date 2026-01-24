@@ -1,0 +1,31 @@
+docs/api.md
+  e2f5e23d3518aea6 88-89,103-136,519-548
+README.md
+  e2f5e23d3518aea6 96,103-130
+packages/core/src/security/policy.ts
+  e2f5e23d3518aea6 1-84
+packages/core/src/security/index.ts
+  e2f5e23d3518aea6 3
+packages/core/src/index.ts
+  e2f5e23d3518aea6 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.37",
+  "base_commit_sha": "75e05f088e56cb94d17a265564079c88003e9995",
+  "prompts": {
+    "e2f5e23d3518aea6": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_4113c971bffexkf5GEd5k06eJj",
+        "model": "anthropic/claude-opus-4-5"
+      },
+      "human_author": "dev-dami <damiade5banjo@gmail.com>",
+      "messages": [],
+      "total_additions": 184,
+      "total_deletions": 4,
+      "accepted_lines": 184,
+      "overriden_lines": 0
+    }
+  }
+}
