@@ -36,6 +36,7 @@ export async function dockerBuild(options: DockerBuildOptions): Promise<void> {
 export async function dockerRun(options: DockerRunOptions): Promise<DockerRunResult> {
   const args = [
     'run',
+    '--rm',
     '--name',
     options.containerName,
     '-m',
