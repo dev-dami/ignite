@@ -1,6 +1,6 @@
 {
   "name": "ignite",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "description": "A Bun-first local execution framework for JavaScript/TypeScript microservices with pre-execution safety analysis",
   "workspaces": [
