@@ -1,0 +1,27 @@
+_sidebar.md
+  e2f5e23d3518aea6 1-14
+.github/workflows/docs.yml
+  e2f5e23d3518aea6 1-43
+index.html
+  e2f5e23d3518aea6 1-329
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.37",
+  "base_commit_sha": "f7e4a4f128414dae4a97997f9808c4c1f5ef7c58",
+  "prompts": {
+    "e2f5e23d3518aea6": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_4113c971bffexkf5GEd5k06eJj",
+        "model": "anthropic/claude-opus-4-5"
+      },
+      "human_author": "dev-dami <damiade5banjo@gmail.com>",
+      "messages": [],
+      "total_additions": 386,
+      "total_deletions": 0,
+      "accepted_lines": 386,
+      "overriden_lines": 0
+    }
+  }
+}
