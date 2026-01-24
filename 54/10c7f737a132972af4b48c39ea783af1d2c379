@@ -1,0 +1,39 @@
+packages/cli/src/commands/run.ts
+  e2f5e23d3518aea6 1,8,38,48-53
+packages/cli/src/index.ts
+  e2f5e23d3518aea6 29
+packages/core/src/runtime/runtime.types.ts
+  e2f5e23d3518aea6 17-25
+packages/core/src/security/index.ts
+  e2f5e23d3518aea6 1-2
+packages/core/src/security/security.types.ts
+  e2f5e23d3518aea6 1-62
+packages/core/src/runtime/docker-runtime.ts
+  e2f5e23d3518aea6 50-69
+packages/core/src/execution/execute.ts
+  e2f5e23d3518aea6 52,103-109
+packages/core/src/index.ts
+  e2f5e23d3518aea6 18-20
+packages/core/src/security/audit.ts
+  e2f5e23d3518aea6 1-196
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.37",
+  "base_commit_sha": "5410c7f737a132972af4b48c39ea783af1d2c379",
+  "prompts": {
+    "e2f5e23d3518aea6": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_4113c971bffexkf5GEd5k06eJj",
+        "model": "anthropic/claude-opus-4-5"
+      },
+      "human_author": "dev-dami <damiade5banjo@gmail.com>",
+      "messages": [],
+      "total_additions": 314,
+      "total_deletions": 7,
+      "accepted_lines": 310,
+      "overriden_lines": 0
+    }
+  }
+}
