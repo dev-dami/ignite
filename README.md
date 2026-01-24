@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/dev-dami/ignite/main/.github/logo.svg" alt="Ignite" width="120" />
+  <img src="./assets/ignite.jpg" alt="Ignite" width="200" />
 </p>
 
 <h1 align="center">Ignite</h1>
