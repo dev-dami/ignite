@@ -1,0 +1,31 @@
+packages/core/src/service/load-service.ts
+  2aa82a6e9ed63a15 69-74
+packages/runtime-node/Dockerfile
+  2aa82a6e9ed63a15 3-4,12,36-38
+packages/http/src/types.ts
+  2aa82a6e9ed63a15 7
+packages/http/src/server.ts
+  2aa82a6e9ed63a15 3,18-83,92-95,98-101,107,109-110,112,123-144,149,151-159,162,184,208,215-223,225,249,274
+packages/runtime-bun/Dockerfile
+  2aa82a6e9ed63a15 3-4,10,34-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.37",
+  "base_commit_sha": "39b1f18c3aee08d6bbaf7f838d1d9c38ad9e58b9",
+  "prompts": {
+    "2aa82a6e9ed63a15": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_41027f5cdffeT2nJ3W6wfLFDuX",
+        "model": "anthropic/claude-opus-4-5"
+      },
+      "human_author": "dev-dami <damiade5banjo@gmail.com>",
+      "messages": [],
+      "total_additions": 173,
+      "total_deletions": 32,
+      "accepted_lines": 147,
+      "overriden_lines": 0
+    }
+  }
+}
