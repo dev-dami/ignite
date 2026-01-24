@@ -1,0 +1,25 @@
+install.sh
+  e2f5e23d3518aea6 128-134,136,143-144,147,154
+packages/cli/src/commands/init.ts
+  e2f5e23d3518aea6 42-56,105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.37",
+  "base_commit_sha": "a205437fa86881da1b54a0dbed06067f9c790563",
+  "prompts": {
+    "e2f5e23d3518aea6": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_4113c971bffexkf5GEd5k06eJj",
+        "model": "anthropic/claude-opus-4-5"
+      },
+      "human_author": "dev-dami <damiade5banjo@gmail.com>",
+      "messages": [],
+      "total_additions": 28,
+      "total_deletions": 3,
+      "accepted_lines": 28,
+      "overriden_lines": 0
+    }
+  }
+}
