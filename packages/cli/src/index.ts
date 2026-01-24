@@ -10,7 +10,7 @@ const program = new Command();
 
 program
   .name('ignite')
-  .description('A local execution framework for JavaScript microservices with pre-execution safety analysis')
+  .description('Secure sandbox for AI-generated code, untrusted scripts, and JS/TS execution')
   .version('0.5.0');
 
 program

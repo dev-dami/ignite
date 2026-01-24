@@ -1,6 +1,6 @@
 # Ignite Walkthrough
 
-A complete guide to building, running, and deploying microservices with Ignite.
+A complete guide to running code securely with Ignite - from AI agent sandboxing to isolated microservices.
 
 ## Table of Contents
 

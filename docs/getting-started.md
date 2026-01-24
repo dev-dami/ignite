@@ -1,6 +1,6 @@
 # Getting Started with Ignite
 
-Get your first microservice running in under 5 minutes.
+Run code securely in under 5 minutes. Perfect for AI agents, untrusted scripts, or isolated microservices.
 
 ## Prerequisites
 
@@ -63,6 +63,20 @@ Output:
 ```
 Hello, Developer!
 ```
+
+## Run in Secure Sandbox Mode
+
+For untrusted code (AI-generated, user submissions, etc.), use `--audit`:
+
+```bash
+ignite run . --audit
+```
+
+This enforces:
+- **No network access** - Code can't call external APIs
+- **Read-only filesystem** - Can't write outside `/tmp`
+- **Dropped capabilities** - No privilege escalation
+- **Security report** - Shows blocked violations
 
 ## Check Safety Before Running
 

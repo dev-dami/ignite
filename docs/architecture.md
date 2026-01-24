@@ -2,7 +2,7 @@
 
 ## Overview
 
-Ignite is a local execution framework for JavaScript/TypeScript microservices that runs each service in an isolated Docker container and performs pre-execution safety analysis.
+Ignite is a secure execution sandbox for JavaScript/TypeScript code. It runs code in isolated Docker containers with network blocking, filesystem restrictions, and security auditing. Designed for AI agents, untrusted code execution, and isolated microservices.
 
 **Bun-first** with Node.js support.
 

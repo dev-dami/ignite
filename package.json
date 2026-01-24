@@ -2,7 +2,7 @@
   "name": "ignite",
   "version": "0.5.0",
   "private": true,
-  "description": "A Bun-first local execution framework for JavaScript/TypeScript microservices with pre-execution safety analysis",
+  "description": "Secure JS/TS code execution in Docker with sandboxing for AI agents, untrusted code, and microservices",
   "workspaces": [
     "packages/*",
     "examples/*"

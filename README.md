@@ -5,7 +5,7 @@
 <h1 align="center">Ignite</h1>
 
 <p align="center">
-  <strong>Run JS/TS microservices in isolated Docker containers with preflight safety checks</strong>
+  <strong>Secure sandbox for executing AI-generated code, untrusted scripts, and JS/TS microservices</strong>
 </p>
 
 <p align="center">
@@ -30,14 +30,20 @@
 
 ## Overview
 
-Ignite is a **Bun-first execution framework** that runs your JavaScript/TypeScript code in isolated Docker containers. It provides pre-execution safety analysis to catch issues before they happen.
+Ignite runs JavaScript/TypeScript code in **secure, isolated Docker containers** with network blocking, filesystem restrictions, and security auditing. Built for AI agents that generate code, student submissions, plugin systems, or any scenario where you need to run untrusted code safely.
 
 ```
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│  Your Code   │ ──► │   Ignite     │ ──► │   Docker     │
-│  index.ts    │     │  Preflight   │     │  Container   │
+│  Untrusted   │ ──► │   Ignite     │ ──► │   Sandboxed  │
+│    Code      │     │   Sandbox    │     │  Execution   │
 └──────────────┘     └──────────────┘     └──────────────┘
 ```
+
+**Use cases:**
+- **AI Agents** - Safely execute LLM-generated code
+- **Code Playgrounds** - Run student/user submissions
+- **Plugin Systems** - Isolate third-party extensions
+- **CI/CD** - Security checks before deployment
 
 <img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png" alt="rainbow" width="100%">
 
