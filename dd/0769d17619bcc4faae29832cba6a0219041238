@@ -1,0 +1,27 @@
+_sidebar.md
+  e2f5e23d3518aea6 12-17
+benchmarks/results.md
+  e2f5e23d3518aea6 1-34
+index.html
+  e2f5e23d3518aea6 27-36,38-40,57-58,111,133,142,150,156,161,172,181,185,204,209,222,251,256
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.37",
+  "base_commit_sha": "dd0769d17619bcc4faae29832cba6a0219041238",
+  "prompts": {
+    "e2f5e23d3518aea6": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_4113c971bffexkf5GEd5k06eJj",
+        "model": "anthropic/claude-opus-4-5"
+      },
+      "human_author": "dev-dami <damiade5banjo@gmail.com>",
+      "messages": [],
+      "total_additions": 69,
+      "total_deletions": 21,
+      "accepted_lines": 69,
+      "overriden_lines": 0
+    }
+  }
+}
