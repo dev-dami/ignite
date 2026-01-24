@@ -1,0 +1,31 @@
+docs/getting-started.md
+  e2f5e23d3518aea6 1-126
+docs/api.md
+  e2f5e23d3518aea6 1-503
+docs/walkthrough.md
+  e2f5e23d3518aea6 1-401
+README.md
+  e2f5e23d3518aea6 1-3,5,7-9,11-17,19-25,27,29-34,42,44,46-47,49-51,53,55,58-59,61-63,65-66,69-70,73,75,88,95-96,98,100,102,104-110,112,116
+.github/workflows/ci.yml
+  e2f5e23d3518aea6 1-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.37",
+  "base_commit_sha": "0c7c1aaf2a68454c95a3009133252ffad32dee54",
+  "prompts": {
+    "e2f5e23d3518aea6": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_4113c971bffexkf5GEd5k06eJj",
+        "model": "anthropic/claude-opus-4-5"
+      },
+      "human_author": "dev-dami <damiade5banjo@gmail.com>",
+      "messages": [],
+      "total_additions": 1209,
+      "total_deletions": 181,
+      "accepted_lines": 1200,
+      "overriden_lines": 0
+    }
+  }
+}
