@@ -99,6 +99,7 @@ ignite run <path> [options]
 | `--skip-preflight` | `false` | Skip safety checks |
 | `--json` | `false` | Output results as JSON |
 | `--audit` | `false` | Run with security audit (blocks network, read-only filesystem) |
+| `--audit-output <file>` | - | Write security audit to a JSON file |
 
 **Examples:**
 
@@ -150,6 +151,8 @@ Filesystem
 ──────────────────────────────────────────────────
 ✗ Security Status: 2 VIOLATION(S) BLOCKED
 ```
+
+When `--json` is used with `--audit`, the JSON output includes a `securityAudit` field.
 
 **Output:**
 
@@ -574,7 +577,8 @@ Execute a service.
     "data": [1, 2, 3],
     "operation": "sum"
   },
-  "skipPreflight": false
+  "skipPreflight": false,
+  "audit": true
 }
 ```
 
@@ -582,6 +586,8 @@ Execute a service.
 |-------|------|----------|-------------|
 | `input` | object | No | Input data passed to service |
 | `skipPreflight` | boolean | No | Skip safety checks |
+| `skipBuild` | boolean | No | Skip image build if already built |
+| `audit` | boolean | No | Run with security audit |
 
 **Response:**
 
@@ -596,6 +602,8 @@ Execute a service.
   }
 }
 ```
+
+When `audit` is true, the response includes `securityAudit`.
 
 **Errors:**
 
@@ -636,6 +644,23 @@ service:
   timeoutMs: number      # Timeout (default: 30000)
   env: object            # Environment variables
   dependencies: array    # Explicit dependencies (auto-detected by default)
+
+preflight:
+  memory:
+    baseMb: number            # Base memory estimate (default: 50)
+    perDependencyMb: number   # Memory per dependency (default: 2)
+    warnRatio: number         # Warning threshold ratio (default: 1)
+    failRatio: number         # Failure threshold ratio (default: 0.8)
+  dependencies:
+    warnCount: number         # Warn if dependency count exceeds (default: 100)
+    infoCount: number         # Info threshold for moderate count (default: 50)
+  image:
+    warnMb: number            # Image size warn threshold (default: 500)
+    failMb: number            # Image size fail threshold (default: 1000)
+  timeout:
+    minMs: number             # Minimum timeout (default: 100)
+    maxMs: number             # Maximum recommended timeout (default: 30000)
+    coldStartBufferMs: number # Cold start buffer (default: 500)
 ```
 
 **Supported Runtimes:**
@@ -699,20 +724,9 @@ Create an `ignite.policy.yaml` file to customize security settings:
 security:
   network:
     enabled: false              # Block all network (default)
-    allowedHosts:               # Optional: allow specific hosts
-      - api.example.com
-    allowedPorts:               # Optional: allow specific ports
-      - 443
 
   filesystem:
     readOnly: true              # Read-only root filesystem
-    allowedWritePaths:          # Paths that can be written to
-      - /tmp
-    blockedReadPaths:           # Paths blocked from reading
-      - /etc/passwd
-      - /etc/shadow
-      - /proc
-      - /sys
 
   process:
     allowSpawn: false           # Block spawning child processes
