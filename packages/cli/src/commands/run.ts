@@ -1,4 +1,6 @@
-import { loadService, executeService, runPreflight, createReport, formatReportAsText, getImageName, buildServiceImage, parseAuditFromOutput, formatSecurityAudit, DEFAULT_POLICY, isValidRuntime } from '@ignite/core';
+import { writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { loadService, executeService, runPreflight, createReport, formatReportAsText, getImageName, buildServiceImage, parseAuditFromOutput, formatSecurityAudit, DEFAULT_POLICY, isValidRuntime, loadPolicyFile } from '@ignite/core';
 import { logger, ConfigError } from '@ignite/shared';
 
 interface RunOptions {
@@ -7,6 +9,7 @@ interface RunOptions {
   json?: boolean;
   audit?: boolean;
   runtime?: string;
+  auditOutput?: string;
 }
 
 export async function runCommand(servicePath: string, options: RunOptions): Promise<void> {
@@ -45,18 +48,31 @@ export async function runCommand(servicePath: string, options: RunOptions): Prom
       process.exit(1);
     }
 
-    const metrics = await executeService(service, { input, skipBuild: true, audit: options.audit });
+    const policy = options.audit
+      ? (await loadPolicyFile(service.servicePath)) ?? DEFAULT_POLICY
+      : undefined;
+
+    const metrics = await executeService(service, { input, skipBuild: true, audit: options.audit, policy });
 
     const report = createReport(preflightResult, metrics);
+    const audit = options.audit && policy
+      ? parseAuditFromOutput(metrics.stdout, metrics.stderr, policy)
+      : undefined;
+
+    if (options.auditOutput && audit) {
+      const outputPath = join(process.cwd(), options.auditOutput);
+      await writeFile(outputPath, JSON.stringify(audit, null, 2));
+      logger.success(`Audit saved to ${outputPath}`);
+    }
 
     if (options.json) {
-      console.log(JSON.stringify(report, null, 2));
+      const payload = audit ? { ...report, securityAudit: audit } : report;
+      console.log(JSON.stringify(payload, null, 2));
     } else {
       console.log(formatReportAsText(report));
     }
 
-    if (options.audit) {
-      const audit = parseAuditFromOutput(metrics.stdout, metrics.stderr, DEFAULT_POLICY);
+    if (options.audit && audit && !options.json) {
       console.log(formatSecurityAudit(audit));
     }
 
