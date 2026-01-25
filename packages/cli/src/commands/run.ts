@@ -1,4 +1,4 @@
-import { loadService, executeService, runPreflight, createReport, formatReportAsText, getImageName, buildServiceImage, parseAuditFromOutput, formatSecurityAudit, DEFAULT_POLICY } from '@ignite/core';
+import { loadService, executeService, runPreflight, createReport, formatReportAsText, getImageName, buildServiceImage, parseAuditFromOutput, formatSecurityAudit, DEFAULT_POLICY, isValidRuntime } from '@ignite/core';
 import { logger, ConfigError } from '@ignite/shared';
 
 interface RunOptions {
@@ -6,11 +6,21 @@ interface RunOptions {
   skipPreflight?: boolean;
   json?: boolean;
   audit?: boolean;
+  runtime?: string;
 }
 
 export async function runCommand(servicePath: string, options: RunOptions): Promise<void> {
   try {
     const service = await loadService(servicePath);
+    
+    if (options.runtime) {
+      if (!isValidRuntime(options.runtime)) {
+        throw new ConfigError(`Invalid runtime: ${options.runtime}`);
+      }
+      service.config.service.runtime = options.runtime;
+      logger.info(`Runtime override: ${options.runtime}`);
+    }
+    
     const serviceName = service.config.service.name;
     const imageName = getImageName(serviceName);
 
