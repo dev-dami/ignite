@@ -1,0 +1,45 @@
+packages/core/src/security/security.types.ts
+  2aa82a6e9ed63a15 15-16
+packages/core/src/execution/execute.ts
+  2aa82a6e9ed63a15 1-4,52,98-109,115-123
+packages/core/src/security/policy.ts
+  2aa82a6e9ed63a15 4,50,65
+packages/shared/src/types.ts
+  2aa82a6e9ed63a15 4,7,13-32,72-77
+scripts/build-binaries.ts
+  2aa82a6e9ed63a15 59
+packages/core/src/runtime/environment.ts
+  2aa82a6e9ed63a15 1-4,6-93,95-99,101-173,175-181,183-186
+packages/core/src/index.ts
+  2aa82a6e9ed63a15 19-23,27-45
+packages/core/src/runtime/docker-runtime.ts
+  2aa82a6e9ed63a15 46-47
+packages/core/src/runtime/runtime-registry.ts
+  2aa82a6e9ed63a15 1-2,5-6,10,13,15-16,19-20,23-24,26-69
+packages/core/src/runtime/runtime-plugin.ts
+  2aa82a6e9ed63a15 1-208
+packages/core/src/security/audit.ts
+  2aa82a6e9ed63a15 151
+packages/core/src/runtime/runtime.types.ts
+  2aa82a6e9ed63a15 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.37",
+  "base_commit_sha": "f235b377a08f0de05ff69ffdc047c75cf3923950",
+  "prompts": {
+    "2aa82a6e9ed63a15": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_41027f5cdffeT2nJ3W6wfLFDuX",
+        "model": "anthropic/claude-opus-4-5"
+      },
+      "human_author": "dev-dami <damiade5banjo@gmail.com>",
+      "messages": [],
+      "total_additions": 1735,
+      "total_deletions": 434,
+      "accepted_lines": 1550,
+      "overriden_lines": 7
+    }
+  }
+}
