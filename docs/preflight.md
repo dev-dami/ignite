@@ -59,12 +59,26 @@ Each check returns:
 
 ## Customizing Thresholds
 
-Thresholds are currently hardcoded. Future versions will support configuration via `service.yaml`:
+Thresholds can be configured via `service.yaml`:
 
 ```yaml
 service:
   name: my-service
-  preflight:
-    memory_buffer: 1.5
-    max_dependencies: 150
+
+preflight:
+  memory:
+    baseMb: 60
+    perDependencyMb: 3
+    warnRatio: 1
+    failRatio: 0.85
+  dependencies:
+    warnCount: 120
+    infoCount: 60
+  image:
+    warnMb: 600
+    failMb: 1200
+  timeout:
+    minMs: 200
+    maxMs: 45000
+    coldStartBufferMs: 750
 ```
