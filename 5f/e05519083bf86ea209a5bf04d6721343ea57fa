@@ -1,0 +1,21 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.37",
+  "base_commit_sha": "5fe05519083bf86ea209a5bf04d6721343ea57fa",
+  "prompts": {
+    "2aa82a6e9ed63a15": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_41027f5cdffeT2nJ3W6wfLFDuX",
+        "model": "anthropic/claude-opus-4-5"
+      },
+      "human_author": "dev-dami <damiade5banjo@gmail.com>",
+      "messages": [],
+      "total_additions": 1735,
+      "total_deletions": 434,
+      "accepted_lines": 1550,
+      "overriden_lines": 7
+    }
+  }
+}
