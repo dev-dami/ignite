@@ -10,6 +10,8 @@ Complete reference for Ignite CLI commands and HTTP API endpoints.
   - [ignite preflight](#ignite-preflight)
   - [ignite serve](#ignite-serve)
   - [ignite report](#ignite-report)
+  - [ignite lock](#ignite-lock)
+  - [ignite env](#ignite-env)
 - [HTTP API](#http-api)
   - [Health Check](#get-health)
   - [List Services](#get-services)
@@ -41,17 +43,26 @@ ignite init <name> [options]
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--runtime <runtime>` | `bun` | Runtime: `bun` or `node` |
-| `--template <template>` | `default` | Template to use |
+| `--runtime <runtime>` | `bun` | Runtime: `bun`, `node`, `deno`, `quickjs` (with optional version: `bun@1.2`) |
+| `--path <path>` | `./<name>` | Custom path for the service directory |
 
 **Examples:**
 
 ```bash
-# Create Bun service
+# Create Bun service (default)
 ignite init my-service
 
 # Create Node.js service
 ignite init my-service --runtime node
+
+# Create with specific version
+ignite init my-service --runtime node@20
+
+# Create Deno service
+ignite init my-service --runtime deno
+
+# Create QuickJS service (fast cold start)
+ignite init my-service --runtime quickjs
 ```
 
 **Generated Files:**
@@ -84,6 +95,7 @@ ignite run <path> [options]
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--input <json>` | `{}` | Input data as JSON string |
+| `--runtime <runtime>` | (from service.yaml) | Override runtime (e.g., `node@20`, `bun@1.2`) |
 | `--skip-preflight` | `false` | Skip safety checks |
 | `--json` | `false` | Output results as JSON |
 | `--audit` | `false` | Run with security audit (blocks network, read-only filesystem) |
@@ -96,6 +108,9 @@ ignite run ./my-service
 
 # With input data
 ignite run ./my-service --input '{"name": "World"}'
+
+# Override runtime version
+ignite run ./my-service --runtime node@22
 
 # Skip preflight (development only)
 ignite run ./my-service --skip-preflight
@@ -267,6 +282,141 @@ ignite report ./my-service
 
 # JSON to file
 ignite report ./my-service --format json --output report.json
+```
+
+---
+
+### ignite lock
+
+Create or update environment manifest (`ignite.lock`) for reproducible builds.
+
+```bash
+ignite lock <path> [options]
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `path` | Path to service directory |
+
+**Options:**
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--update` | `false` | Update existing manifest |
+| `--check` | `false` | Check for drift without modifying |
+
+**Examples:**
+
+```bash
+# Create ignite.lock
+ignite lock ./my-service
+
+# Update existing manifest
+ignite lock ./my-service --update
+
+# Check for environment drift (CI/CD)
+ignite lock ./my-service --check
+```
+
+**Generated File (`ignite.lock`):**
+
+```yaml
+version: "1.0"
+runtime:
+  name: bun
+  version: "1.3"
+lockfile: bun.lockb
+checksums:
+  package.json: sha256:abc123...
+  bun.lockb: sha256:def456...
+createdAt: "2024-01-15T10:30:00.000Z"
+```
+
+**Exit Codes:**
+
+| Code | Meaning |
+|------|---------|
+| 0 | Success / No drift detected |
+| 1 | Drift detected (with `--check`) |
+
+---
+
+### ignite env
+
+Display environment information and available runtimes.
+
+```bash
+ignite env [path] [options]
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `path` | Path to service directory (optional) |
+
+**Options:**
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--runtimes` | `false` | List all supported runtimes |
+
+**Examples:**
+
+```bash
+# Show service environment info
+ignite env ./my-service
+
+# List all available runtimes
+ignite env --runtimes
+```
+
+**Output (service info):**
+
+```
+Service: my-service
+Runtime: bun@1.3
+
+Environment: Locked
+  Runtime: bun@1.3
+  Locked at: 2024-01-15T10:30:00.000Z
+  Lockfile: bun.lockb
+
+✓ Environment matches manifest
+```
+
+**Output (runtimes list):**
+
+```
+Supported Runtimes:
+
+  bun
+    Default entry: index.ts
+    Extensions: .ts, .js, .tsx, .jsx
+    Versions: 1.0, 1.1, 1.2, 1.3 (default: 1.3)
+
+  node
+    Default entry: index.js
+    Extensions: .js, .mjs, .cjs
+    Versions: 18, 20, 22 (default: 20)
+
+  deno
+    Default entry: index.ts
+    Extensions: .ts, .js, .tsx, .jsx
+    Versions: 1.40, 1.41, 1.42, 2.0 (default: 2.0)
+
+  quickjs
+    Default entry: index.js
+    Extensions: .js
+    Versions: latest (default: latest)
+
+Usage examples:
+  service.yaml: runtime: bun
+  service.yaml: runtime: bun@1.2
+  service.yaml: runtime: node@20
+  ignite run . --runtime node@22
 ```
 
 ---
@@ -477,14 +627,36 @@ Execute a service.
 service:
   # Required fields
   name: string           # Service identifier (alphanumeric, hyphens)
-  runtime: string        # "bun" or "node"
+  runtime: string        # Runtime with optional version (see below)
   entry: string          # Entry file path
 
   # Optional fields
   memoryMb: number       # Memory limit (default: 128)
+  cpuLimit: number       # CPU limit in cores (default: 1)
   timeoutMs: number      # Timeout (default: 30000)
   env: object            # Environment variables
   dependencies: array    # Explicit dependencies (auto-detected by default)
+```
+
+**Supported Runtimes:**
+
+| Runtime | Versions | Default Entry | Notes |
+|---------|----------|---------------|-------|
+| `bun` | 1.0, 1.1, 1.2, 1.3 | index.ts | TypeScript native, fastest |
+| `node` | 18, 20, 22 | index.js | Node.js compatibility |
+| `deno` | 1.40, 1.41, 1.42, 2.0 | index.ts | Secure by default |
+| `quickjs` | latest | index.js | Ultra-fast cold start (~10ms) |
+
+**Runtime Version Syntax:**
+
+```yaml
+# Use default version
+runtime: bun
+
+# Specify version
+runtime: bun@1.2
+runtime: node@20
+runtime: deno@2.0
 ```
 
 **Full Example:**
@@ -492,9 +664,10 @@ service:
 ```yaml
 service:
   name: my-service
-  runtime: bun
+  runtime: bun@1.3
   entry: index.ts
   memoryMb: 256
+  cpuLimit: 0.5
   timeoutMs: 60000
   env:
     NODE_ENV: production

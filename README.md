@@ -51,7 +51,7 @@ Ignite runs JavaScript/TypeScript code in **secure, isolated Docker containers**
 
 | Metric | Value |
 |--------|-------|
-| **Runtimes** | Bun, Node |
+| **Runtimes** | Bun |
 | **Base Images** | Alpine (minimal) |
 | **Platforms** | Linux x64/ARM64, macOS x64/ARM64 |
 | **Dependencies** | Docker only |

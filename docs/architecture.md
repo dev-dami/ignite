@@ -4,7 +4,7 @@
 
 Ignite is a secure execution sandbox for JavaScript/TypeScript code. It runs code in isolated Docker containers with network blocking, filesystem restrictions, and security auditing. Designed for AI agents, untrusted code execution, and isolated microservices.
 
-**Bun-first** with Node.js support.
+**Bun-first** runtime.
 
 ## Package Structure
 
@@ -14,7 +14,6 @@ ignite/
 │   ├── cli/          # Command-line interface
 │   ├── core/         # Framework core logic
 │   ├── runtime-bun/  # Bun runtime adapter
-│   ├── runtime-node/ # Node.js runtime adapter
 │   └── shared/       # Shared types and utilities
 └── examples/         # Example services
 ```
@@ -25,9 +24,8 @@ ignite/
 Parses `service.yaml` configuration and validates service structure.
 
 ### Runtime Registry
-Manages runtime configurations for different execution environments:
+Manages runtime configuration for the execution environment:
 - **bun**: Bun runtime with native TypeScript support
-- **node**: Node.js runtime for JavaScript
 
 ### Docker Runtime
 Manages Docker image building and container execution.
@@ -57,7 +55,7 @@ service.yaml
          │
          ▼
 ┌─────────────────┐
-│Runtime Registry │──► Select Bun or Node.js
+│Runtime Registry │──► Select Bun
 └────────┬────────┘
          │
          ▼
@@ -67,7 +65,7 @@ service.yaml
          │
          ▼
 ┌─────────────────┐
-│ Execution Engine│──► Docker (Bun/Node)
+│ Execution Engine│──► Docker (Bun)
 └────────┬────────┘
          │
          ▼
@@ -91,7 +89,7 @@ The runtime registry (`packages/core/src/runtime/runtime-registry.ts`) provides:
 
 ```typescript
 interface RuntimeConfig {
-  name: RuntimeName;           // 'bun' | 'node'
+  name: RuntimeName;           // 'bun'
   dockerfileDir: string;       // Directory containing Dockerfile
   defaultEntry: string;        // Default entry file
   fileExtensions: string[];    // Supported file extensions
@@ -100,7 +98,7 @@ interface RuntimeConfig {
 
 ## Adding New Runtimes
 
-To add a new runtime:
+To add a new runtime in the future:
 
 1. Create `packages/runtime-<name>/Dockerfile`
 2. Add entry to runtime registry

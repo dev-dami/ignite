@@ -50,8 +50,7 @@ ignite/
 │   ├── core/      # Core functionality (loader, preflight, execution)
 │   ├── http/      # HTTP server
 │   ├── shared/    # Shared types and utilities
-│   ├── runtime-bun/   # Bun runtime Dockerfile
-│   └── runtime-node/  # Node runtime Dockerfile
+│   └── runtime-bun/   # Bun runtime Dockerfile
 ├── examples/      # Example services
 ├── docs/          # Documentation
 └── scripts/       # Build scripts

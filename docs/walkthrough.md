@@ -192,18 +192,9 @@ service:
   entry: index.ts
 ```
 
-### Node Runtime
+### Runtime
 
-Best for:
-- CommonJS compatibility
-- Specific npm packages
-- Node-specific APIs
-
-```yaml
-service:
-  runtime: node
-  entry: index.js   # Compile TS first, or use JS
-```
+Ignite currently supports the Bun runtime for TypeScript and modern ESM modules.
 
 ### Using Dependencies
 
