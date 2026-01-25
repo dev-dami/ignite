@@ -647,6 +647,8 @@ service:
 | `deno` | 1.40, 1.41, 1.42, 2.0 | index.ts | Secure by default |
 | `quickjs` | latest | index.js | Ultra-fast cold start (~10ms) |
 
+Security note: Bun is the default runtime. Using other runtimes increases the attack surface; only use them when required and keep runtime versions pinned.
+
 **Runtime Version Syntax:**
 
 ```yaml

@@ -25,6 +25,11 @@ export function parseAuditFromOutput(
     { pattern: /permission denied.*?['"]?([\/\w.-]+)['"]?/gi, action: 'blocked' as const },
   ];
 
+  const processPatterns = [
+    { pattern: /spawn.*EACCES/gi, action: 'spawn' as const },
+    { pattern: /child_process.*blocked/gi, action: 'spawn' as const },
+  ];
+
   const combined = stdout + '\n' + stderr;
 
   for (const { pattern, action } of networkPatterns) {
@@ -56,6 +61,20 @@ export function parseAuditFromOutput(
     }
   }
 
+  for (const { pattern, action } of processPatterns) {
+    const matches = combined.matchAll(pattern);
+    for (const match of matches) {
+      events.push({
+        type: 'process',
+        action,
+        target: extractCommand(match[0]) || 'unknown command',
+        timestamp: now,
+        allowed: false,
+        details: match[0],
+      });
+    }
+  }
+
   const summary = calculateSummary(events);
 
   return { events, summary, policy };
@@ -76,9 +95,15 @@ function extractPath(text: string): string | null {
   return pathMatch?.[1] ?? null;
 }
 
+function extractCommand(text: string): string | null {
+  const cmdMatch = text.match(/spawn\s+['"]?(\w+)['"]?/i);
+  return cmdMatch?.[1] ?? null;
+}
+
 function calculateSummary(events: SecurityEvent[]): SecuritySummary {
   const networkEvents = events.filter(e => e.type === 'network');
   const filesystemEvents = events.filter(e => e.type === 'filesystem');
+  const processEvents = events.filter(e => e.type === 'process');
 
   const hasViolations = events.some(e => !e.allowed);
 
@@ -88,6 +113,8 @@ function calculateSummary(events: SecurityEvent[]): SecuritySummary {
     filesystemReads: filesystemEvents.filter(e => e.action === 'read').length,
     filesystemWrites: filesystemEvents.filter(e => e.action === 'write').length,
     filesystemBlocked: filesystemEvents.filter(e => !e.allowed).length,
+    processSpawns: processEvents.length,
+    processBlocked: processEvents.filter(e => !e.allowed).length,
     overallStatus: hasViolations ? 'violations' : 'clean',
   };
 }
@@ -109,6 +136,7 @@ export function formatSecurityAudit(audit: SecurityAudit): string {
   lines.push(`  ${DIM}Policy:${NC}`);
   lines.push(`    Network: ${audit.policy.network.enabled ? `${YELLOW}enabled${NC}` : `${GREEN}blocked${NC}`}`);
   lines.push(`    Filesystem: ${audit.policy.filesystem.readOnly ? `${GREEN}read-only${NC}` : `${YELLOW}read-write${NC}`}`);
+  lines.push(`    Process spawn: ${audit.policy.process.allowSpawn ? `${YELLOW}allowed${NC}` : `${GREEN}blocked${NC}`}`);
   lines.push('');
 
   if (audit.events.length === 0) {
@@ -119,6 +147,7 @@ export function formatSecurityAudit(audit: SecurityAudit): string {
     
     const networkEvents = audit.events.filter(e => e.type === 'network');
     const fsEvents = audit.events.filter(e => e.type === 'filesystem');
+    const procEvents = audit.events.filter(e => e.type === 'process');
 
     if (networkEvents.length > 0) {
       lines.push('');
@@ -139,6 +168,16 @@ export function formatSecurityAudit(audit: SecurityAudit): string {
         lines.push(`    ${icon} ${event.action}: ${event.target} ${DIM}(${status})${NC}`);
       }
     }
+
+    if (procEvents.length > 0) {
+      lines.push('');
+      lines.push(`  ${BOLD}Process${NC}`);
+      for (const event of procEvents) {
+        const icon = event.allowed ? `${GREEN}✓${NC}` : `${RED}✗${NC}`;
+        const status = event.allowed ? 'allowed' : 'blocked';
+        lines.push(`    ${icon} ${event.action}: ${event.target} ${DIM}(${status})${NC}`);
+      }
+    }
   }
 
   lines.push('');
@@ -148,7 +187,7 @@ export function formatSecurityAudit(audit: SecurityAudit): string {
   if (summary.overallStatus === 'clean') {
     lines.push(`  ${GREEN}✓ Security Status: CLEAN${NC}`);
   } else {
-    const violations = summary.networkBlocked + summary.filesystemBlocked;
+    const violations = summary.networkBlocked + summary.filesystemBlocked + summary.processBlocked;
     lines.push(`  ${RED}✗ Security Status: ${violations} VIOLATION(S) BLOCKED${NC}`);
   }
   lines.push('');

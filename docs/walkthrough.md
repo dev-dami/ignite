@@ -143,7 +143,7 @@ ignite run . --input '{"data": [10, 20, 30], "operation": "average"}'
 service:
   # Required
   name: my-service           # Service identifier
-  runtime: bun               # "bun" or "node"
+  runtime: bun               # bun, node, deno, quickjs (optional version with @)
   entry: index.ts            # Entry file
   
   # Resource Limits
@@ -194,7 +194,12 @@ service:
 
 ### Runtime
 
-Ignite currently supports the Bun runtime for TypeScript and modern ESM modules.
+Ignite supports Bun, Node, Deno, and QuickJS runtimes. Bun is the default and recommended option.
+
+**Security considerations:**
+- Additional runtimes increase the attack surface and dependency complexity.
+- Use non-Bun runtimes only when required by your code or dependencies.
+- Audit dependencies and keep runtime versions pinned (e.g., `node@20`, `deno@2.0`) to reduce drift.
 
 ### Using Dependencies
 

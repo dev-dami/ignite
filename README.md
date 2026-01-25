@@ -51,10 +51,12 @@ Ignite runs JavaScript/TypeScript code in **secure, isolated Docker containers**
 
 | Metric | Value |
 |--------|-------|
-| **Runtimes** | Bun |
+| **Runtimes** | Bun (default), Node, Deno, QuickJS |
 | **Base Images** | Alpine (minimal) |
 | **Platforms** | Linux x64/ARM64, macOS x64/ARM64 |
 | **Dependencies** | Docker only |
+
+Note: Bun is the default runtime. Other runtimes are supported but increase the security attack surface; use them only when required and review service code and dependencies carefully.
 
 <img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png" alt="rainbow" width="100%">
 

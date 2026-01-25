@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { parse as parseYaml } from 'yaml';
-import type { SecurityPolicy, NetworkPolicy, FilesystemPolicy } from './security.types.js';
+import type { SecurityPolicy, NetworkPolicy, FilesystemPolicy, ProcessPolicy } from './security.types.js';
 import { DEFAULT_POLICY } from './security.types.js';
 
 export interface PolicyFile {
@@ -11,6 +11,10 @@ export interface PolicyFile {
     };
     filesystem?: {
       readOnly?: boolean;
+    };
+    process?: {
+      allowSpawn?: boolean;
+      allowedCommands?: string[];
     };
   };
 }
@@ -47,7 +51,12 @@ function mergePolicies(base: SecurityPolicy, file: PolicyFile): SecurityPolicy {
     readOnly: security.filesystem?.readOnly ?? base.filesystem.readOnly,
   };
 
-  return { network, filesystem };
+  const process: ProcessPolicy = {
+    allowSpawn: security.process?.allowSpawn ?? base.process.allowSpawn,
+    allowedCommands: security.process?.allowedCommands ?? base.process.allowedCommands,
+  };
+
+  return { network, filesystem, process };
 }
 
 export function policyToDockerOptions(policy: SecurityPolicy): {

@@ -20,14 +20,14 @@ Ignite aims to provide **defense-in-depth** for executing untrusted JavaScript/T
 ┌─────────────────────────────────────────────────────────────┐
 │                        HOST SYSTEM                          │
 │  ┌───────────────────────────────────────────────────────┐  │
-│  │                    DOCKER DAEMON                       │  │
+│  │                    DOCKER DAEMON                      │  │
 │  │  ┌─────────────────────────────────────────────────┐  │  │
-│  │  │              IGNITE CONTAINER                    │  │  │
+│  │  │              IGNITE CONTAINER                   │  │  │
 │  │  │  ┌─────────────────────────────────────────────┐│  │  │
 │  │  │  │           UNTRUSTED CODE                    ││  │  │
 │  │  │  │                                             ││  │  │
-│  │  │  │  This is where AI-generated or user code   ││  │  │
-│  │  │  │  executes. Assume fully malicious.         ││  │  │
+│  │  │  │  This is where AI-generated or user code    ││  │  │
+│  │  │  │  executes. Assume fully malicious.          ││  │  │
 │  │  │  └─────────────────────────────────────────────┘│  │  │
 │  │  └─────────────────────────────────────────────────┘  │  │
 │  └───────────────────────────────────────────────────────┘  │

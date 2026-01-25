@@ -2,6 +2,7 @@ import { writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { logger } from '@ignite/shared';
 import { isValidRuntime, getRuntimeConfig } from '@ignite/core';
+import { parseRuntime } from '@ignite/shared';
 
 interface InitOptions {
   path?: string;
@@ -21,8 +22,10 @@ function getServiceYamlTemplate(serviceName: string, runtime: string, entry: str
 }
 
 function getPackageJsonTemplate(serviceName: string, runtime: string, entry: string): string {
-  const startCmd = runtime === 'bun' ? `bun run ${entry}` : 
-                   runtime === 'deno' ? `deno run ${entry}` : 
+  const runtimeName = parseRuntime(runtime).name;
+  const startCmd = runtimeName === 'bun' ? `bun run ${entry}` :
+                   runtimeName === 'deno' ? `deno run ${entry}` :
+                   runtimeName === 'quickjs' ? `qjs ${entry}` :
                    `node ${entry}`;
   return JSON.stringify({
     name: serviceName,

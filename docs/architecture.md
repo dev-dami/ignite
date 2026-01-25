@@ -25,7 +25,10 @@ Parses `service.yaml` configuration and validates service structure.
 
 ### Runtime Registry
 Manages runtime configuration for the execution environment:
-- **bun**: Bun runtime with native TypeScript support
+- **bun**: Bun runtime with native TypeScript support (default)
+- **node**: Node.js runtime for JS compatibility
+- **deno**: Deno runtime with secure defaults
+- **quickjs**: QuickJS runtime for minimal overhead
 
 ### Docker Runtime
 Manages Docker image building and container execution.
@@ -55,7 +58,7 @@ service.yaml
          │
          ▼
 ┌─────────────────┐
-│Runtime Registry │──► Select Bun
+│Runtime Registry │──► Select runtime (Bun default)
 └────────┬────────┘
          │
          ▼
@@ -83,13 +86,15 @@ Each service runs in its own Docker container with:
 - Environment variable injection
 - Metrics emission via entrypoint wrapper
 
+Security note: Bun is the default runtime. Supporting additional runtimes increases the attack surface, so use them only when required and keep versions pinned.
+
 ## Runtime Registry
 
 The runtime registry (`packages/core/src/runtime/runtime-registry.ts`) provides:
 
 ```typescript
 interface RuntimeConfig {
-  name: RuntimeName;           // 'bun'
+  name: RuntimeName;           // 'bun' (default), 'node', 'deno', 'quickjs'
   dockerfileDir: string;       // Directory containing Dockerfile
   defaultEntry: string;        // Default entry file
   fileExtensions: string[];    // Supported file extensions

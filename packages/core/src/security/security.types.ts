@@ -1,6 +1,7 @@
 export interface SecurityPolicy {
   network: NetworkPolicy;
   filesystem: FilesystemPolicy;
+  process: ProcessPolicy;
 }
 
 export interface NetworkPolicy {
@@ -11,9 +12,14 @@ export interface FilesystemPolicy {
   readOnly: boolean;
 }
 
+export interface ProcessPolicy {
+  allowSpawn: boolean;
+  allowedCommands?: string[];
+}
+
 export interface SecurityEvent {
-  type: 'network' | 'filesystem';
-  action: 'read' | 'write' | 'connect' | 'blocked';
+  type: 'network' | 'filesystem' | 'process';
+  action: 'read' | 'write' | 'connect' | 'spawn' | 'blocked';
   target: string;
   timestamp: number;
   allowed: boolean;
@@ -32,6 +38,8 @@ export interface SecuritySummary {
   filesystemReads: number;
   filesystemWrites: number;
   filesystemBlocked: number;
+  processSpawns: number;
+  processBlocked: number;
   overallStatus: 'clean' | 'violations';
 }
 
@@ -41,5 +49,8 @@ export const DEFAULT_POLICY: SecurityPolicy = {
   },
   filesystem: {
     readOnly: true,
+  },
+  process: {
+    allowSpawn: false,
   },
 };
