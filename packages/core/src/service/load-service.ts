@@ -1,7 +1,7 @@
 import { readFile, stat, readdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { parse as parseYaml } from 'yaml';
-import { ServiceError, type ServiceConfig } from '@ignite/shared';
+import { ServiceError, type ServiceConfig, validateDockerName } from '@ignite/shared';
 import type { LoadedService, ServiceValidation } from './service.types.js';
 import { isValidRuntime, getSupportedRuntimes } from '../runtime/runtime-registry.js';
 
@@ -68,9 +68,9 @@ function validateServiceConfig(config: unknown): ServiceValidation {
     errors.push('service.name is required');
   } else {
     const name = service['name'] as string;
-    const dockerNameRegex = /^[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$|^[a-z0-9]$/;
-    if (!dockerNameRegex.test(name)) {
-      errors.push('service.name must be lowercase alphanumeric with hyphens (1-63 chars, Docker compatible)');
+    const validation = validateDockerName(name);
+    if (!validation.valid) {
+      errors.push(`service.name invalid: ${validation.error}`);
     }
   }
 
@@ -88,6 +88,12 @@ function validateServiceConfig(config: unknown): ServiceValidation {
 
   if (typeof service['memoryMb'] !== 'number' || service['memoryMb'] <= 0) {
     errors.push('service.memoryMb must be a positive number');
+  }
+
+  if (service['cpuLimit'] !== undefined) {
+    if (typeof service['cpuLimit'] !== 'number' || service['cpuLimit'] <= 0) {
+      errors.push('service.cpuLimit must be a positive number');
+    }
   }
 
   if (typeof service['timeoutMs'] !== 'number' || service['timeoutMs'] <= 0) {

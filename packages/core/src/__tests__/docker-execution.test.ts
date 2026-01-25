@@ -24,12 +24,6 @@ describe('Docker Execution', () => {
   });
 
   describe('given Docker is available', () => {
-    beforeEach(function () {
-      if (!dockerAvailable) {
-        pending('Docker is not available');
-      }
-    });
-
     describe('buildServiceImage', () => {
       it('builds the hello-bun service image', async () => {
         if (!dockerAvailable) return;

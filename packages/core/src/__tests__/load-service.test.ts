@@ -22,7 +22,7 @@ describe('loadService', () => {
       const service = await loadService(servicePath);
 
       expect(service.config.service.name).toBe('image-resizer');
-      expect(service.config.service.runtime).toBe('node');
+      expect(service.config.service.runtime).toBe('bun');
     });
   });
 

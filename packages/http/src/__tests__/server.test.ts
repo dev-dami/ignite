@@ -1,4 +1,5 @@
 import { join } from 'node:path';
+import { isDockerAvailable } from '@ignite/core';
 
 const EXAMPLES_PATH = join(process.cwd(), 'examples');
 
@@ -33,8 +34,11 @@ interface ExecuteResponse {
 
 describe('HTTP Server', () => {
   let handle: (request: Request) => Promise<Response>;
+  let stop: () => void;
+  let dockerAvailable = false;
 
   beforeAll(async () => {
+    dockerAvailable = await isDockerAvailable();
     const { createServer } = await import('../server.js');
     const server = createServer({
       port: 0,
@@ -42,6 +46,11 @@ describe('HTTP Server', () => {
       servicesPath: EXAMPLES_PATH,
     });
     handle = server.handle;
+    stop = server.stop;
+  });
+
+  afterAll(() => {
+    stop?.();
   });
 
   describe('GET /health', () => {
@@ -71,6 +80,7 @@ describe('HTTP Server', () => {
 
   describe('GET /services/:serviceName/preflight', () => {
     it('returns preflight results for valid service', async () => {
+      if (!dockerAvailable) return;
       const request = new Request('http://localhost/services/hello-bun/preflight', { method: 'GET' });
       const response = await handle(request);
       const data = (await response.json()) as PreflightResponse;
@@ -93,6 +103,7 @@ describe('HTTP Server', () => {
 
   describe('POST /services/:serviceName/execute', () => {
     it('executes service without input', async () => {
+      if (!dockerAvailable) return;
       const request = new Request('http://localhost/services/hello-bun/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -109,6 +120,7 @@ describe('HTTP Server', () => {
     }, 120000);
 
     it('executes service with input', async () => {
+      if (!dockerAvailable) return;
       const request = new Request('http://localhost/services/hello-bun/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -123,6 +135,7 @@ describe('HTTP Server', () => {
     }, 120000);
 
     it('skips preflight when requested', async () => {
+      if (!dockerAvailable) return;
       const request = new Request('http://localhost/services/hello-bun/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -2,7 +2,7 @@ import { Elysia, t } from 'elysia';
 import { cors } from '@elysiajs/cors';
 import { join, resolve } from 'node:path';
 import { loadService, executeService, runPreflight, getImageName, buildServiceImage } from '@ignite/core';
-import { logger } from '@ignite/shared';
+import { logger, validateDockerName } from '@ignite/shared';
 import type {
   ServiceExecutionRequest,
   ServiceExecutionResponse,
@@ -23,27 +23,11 @@ export interface ServerOptions {
   rateLimitWindow?: number;
 }
 
-// Service name validation: lowercase alphanumeric with hyphens, 2-63 chars (Docker compatible)
-const SERVICE_NAME_REGEX = /^[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$|^[a-z0-9]$/;
-
-/**
- * Validates and sanitizes service name to prevent path traversal and ensure Docker compatibility
- */
 function validateServiceName(name: string): { valid: boolean; error?: string } {
-  if (!name || typeof name !== 'string') {
-    return { valid: false, error: 'Service name is required' };
+  const result = validateDockerName(name);
+  if (!result.valid) {
+    return { valid: false, error: `Service name invalid: ${result.error}` };
   }
-  
-  // Block path traversal attempts
-  if (name.includes('..') || name.includes('/') || name.includes('\\')) {
-    return { valid: false, error: 'Service name contains invalid characters' };
-  }
-  
-  // Validate Docker-compatible naming
-  if (!SERVICE_NAME_REGEX.test(name)) {
-    return { valid: false, error: 'Service name must be lowercase alphanumeric with hyphens (1-63 chars)' };
-  }
-  
   return { valid: true };
 }
 
@@ -98,7 +82,8 @@ export function createServer(options: ServerOptions = {}) {
   const resolvedServicesPath = resolve(servicesPath);
   const rateLimiter = createRateLimiter(rateLimit, rateLimitWindow);
   
-  const cleanupInterval = setInterval(() => rateLimiter.cleanup(), rateLimitWindow);
+  let cleanupInterval: ReturnType<typeof setInterval> | undefined =
+    setInterval(() => rateLimiter.cleanup(), rateLimitWindow);
 
   const app = new Elysia()
     .use(cors())
@@ -270,8 +255,11 @@ export function createServer(options: ServerOptions = {}) {
       return app;
     },
     stop: () => {
-      if (isRunning) {
+      if (cleanupInterval) {
         clearInterval(cleanupInterval);
+        cleanupInterval = undefined;
+      }
+      if (isRunning) {
         app.stop();
         isRunning = false;
         logger.info('Ignite HTTP server stopped');

@@ -1,7 +1,7 @@
 service:
   name: image-resizer
-  runtime: node
-  entry: index.js
+  runtime: bun
+  entry: index.ts
   memoryMb: 128
   timeoutMs: 5000
   env:

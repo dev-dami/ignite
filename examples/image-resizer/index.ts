@@ -1,6 +1,22 @@
-const input = process.env.IGNITE_INPUT ? JSON.parse(process.env.IGNITE_INPUT) : {};
+interface ResizeEvent {
+  width?: number;
+  height?: number;
+  format?: string;
+}
 
-async function resizeImage(event) {
+interface ResizeResponse {
+  statusCode: number;
+  body: {
+    message: string;
+    dimensions: { width: number; height: number };
+    format: string;
+    processingTimeMs: number;
+  };
+}
+
+const input: ResizeEvent = process.env.IGNITE_INPUT ? JSON.parse(process.env.IGNITE_INPUT) : {};
+
+async function resizeImage(event: ResizeEvent): Promise<ResizeResponse> {
   const { width = 100, height = 100, format = 'jpeg' } = event;
 
   const startTime = Date.now();
@@ -20,7 +36,7 @@ async function resizeImage(event) {
   };
 }
 
-function simulateImageProcessing(width, height) {
+function simulateImageProcessing(width: number, height: number): Promise<void> {
   return new Promise((resolve) => {
     const complexity = (width * height) / 10000;
     const delay = Math.min(100 + complexity * 10, 1000);
