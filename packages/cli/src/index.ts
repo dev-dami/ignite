@@ -30,6 +30,7 @@ program
   .option('--skip-preflight', 'Skip preflight checks before execution')
   .option('--json', 'Output results as JSON')
   .option('--audit', 'Run with security audit (blocks network, read-only filesystem)')
+  .option('--audit-output <file>', 'Write security audit to a JSON file')
   .action(runCommand);
 
 program

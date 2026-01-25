@@ -1,4 +1,5 @@
 import type { ExecutionMetrics, PreflightResult } from '@ignite/shared';
+import type { SecurityAudit } from '@ignite/core';
 
 export interface ServiceExecutionRequest {
   input?: unknown;
@@ -12,6 +13,7 @@ export interface ServiceExecutionResponse {
   serviceName: string;
   metrics?: ExecutionMetrics;
   preflight?: PreflightResult;
+  securityAudit?: SecurityAudit;
   error?: string;
 }
 

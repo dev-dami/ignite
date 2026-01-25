@@ -1,7 +1,7 @@
 import { Elysia, t } from 'elysia';
 import { cors } from '@elysiajs/cors';
 import { join, resolve } from 'node:path';
-import { loadService, executeService, runPreflight, getImageName, buildServiceImage } from '@ignite/core';
+import { loadService, executeService, runPreflight, getImageName, buildServiceImage, loadPolicyFile, DEFAULT_POLICY, parseAuditFromOutput } from '@ignite/core';
 import { logger, validateDockerName } from '@ignite/shared';
 import type {
   ServiceExecutionRequest,
@@ -166,13 +166,21 @@ export function createServer(options: ServerOptions = {}) {
             }
           }
 
-          const metrics = await executeService(service, { input, skipBuild, audit });
+          const policy = audit
+            ? (await loadPolicyFile(servicePath)) ?? DEFAULT_POLICY
+            : undefined;
+
+          const metrics = await executeService(service, { input, skipBuild, audit, policy });
+          const securityAudit = audit && policy
+            ? parseAuditFromOutput(metrics.stdout, metrics.stderr, policy)
+            : undefined;
 
           return {
             success: true,
             serviceName,
             metrics,
             preflight: preflightResult,
+            securityAudit,
           };
         } catch (err) {
           const errorMessage = err instanceof Error ? err.message : 'Unknown error';
