@@ -9,6 +9,7 @@ export interface DockerRunOptions {
   imageName: string;
   containerName: string;
   memoryLimitMb: number;
+  cpuLimit?: number;
   timeoutMs: number;
   workDir: string;
   volumes: VolumeMount[];

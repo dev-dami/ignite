@@ -1,49 +1,13 @@
-import { resolve } from 'node:path';
-import { ExecutionError, logger, type ExecutionMetrics } from '@ignite/shared';
+import { join } from 'node:path';
+import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { ExecutionError, logger, type ExecutionMetrics, parseRuntime } from '@ignite/shared';
 import type { LoadedService } from '../service/service.types.js';
 import { dockerBuild, dockerRun, isDockerAvailable } from '../runtime/docker-runtime.js';
 import { getRuntimeConfig } from '../runtime/runtime-registry.js';
 import { parseMetrics } from './metrics.js';
 
-function findRuntimeRoot(): string {
-  const { statSync } = require('node:fs');
-  const { homedir } = require('node:os');
-  
-  const locations = [
-    process.env['IGNITE_HOME'],
-    resolve(homedir(), '.ignite'),
-    resolve(process.cwd(), 'packages'),
-    resolve(process.cwd(), '..', 'packages'),
-  ].filter(Boolean) as string[];
 
-  for (const loc of locations) {
-    try {
-      const bunRuntime = resolve(loc, 'runtime-bun', 'Dockerfile');
-      const nodeRuntime = resolve(loc, 'runtime-node', 'Dockerfile');
-      if (statSync(bunRuntime).isFile() || statSync(nodeRuntime).isFile()) {
-        return loc;
-      }
-    } catch {
-      continue;
-    }
-  }
-
-  for (const loc of locations) {
-    try {
-      const packagesPath = resolve(loc);
-      if (statSync(packagesPath).isDirectory()) {
-        return packagesPath;
-      }
-    } catch {
-      continue;
-    }
-  }
-
-  throw new Error(
-    'Could not find Ignite runtime files. ' +
-    'Set IGNITE_HOME environment variable or reinstall Ignite.'
-  );
-}
 
 export interface ExecuteOptions {
   input?: unknown;
@@ -85,6 +49,7 @@ export async function executeService(
     imageName,
     containerName,
     memoryLimitMb: service.config.service.memoryMb,
+    cpuLimit: service.config.service.cpuLimit,
     timeoutMs: service.config.service.timeoutMs,
     workDir: '/app',
     volumes: [
@@ -130,17 +95,32 @@ export async function buildServiceImage(
 ): Promise<void> {
   const runtime = service.config.service.runtime;
   const runtimeConfig = getRuntimeConfig(runtime);
-  const runtimeRoot = findRuntimeRoot();
-  const runtimePath = resolve(runtimeRoot, runtimeConfig.dockerfileDir);
-
-  await dockerBuild({
-    contextPath: service.servicePath,
-    dockerfilePath: `${runtimePath}/Dockerfile`,
-    imageName,
-    buildArgs: {
-      ENTRY_FILE: service.config.service.entry,
-    },
-  });
+  const spec = parseRuntime(runtime);
+  const version = spec.version ?? runtimeConfig.version;
+  
+  const dockerfileContent = runtimeConfig.plugin.generateDockerfile(version);
+  
+  const tempDir = join(tmpdir(), `ignite-build-${Date.now()}`);
+  const dockerfilePath = join(tempDir, 'Dockerfile');
+  
+  try {
+    mkdirSync(tempDir, { recursive: true });
+    writeFileSync(dockerfilePath, dockerfileContent, 'utf-8');
+    
+    await dockerBuild({
+      contextPath: service.servicePath,
+      dockerfilePath,
+      imageName,
+      buildArgs: {
+        ENTRY_FILE: service.config.service.entry,
+      },
+    });
+  } finally {
+    try {
+      rmSync(tempDir, { recursive: true, force: true });
+    } catch {
+    }
+  }
 }
 
 export function getLastExecutionMs(serviceName: string): number | undefined {

@@ -43,6 +43,8 @@ export async function dockerRun(options: DockerRunOptions): Promise<DockerRunRes
     `${options.memoryLimitMb}m`,
     '--memory-swap',
     `${options.memoryLimitMb}m`,
+    '--cpus',
+    `${options.cpuLimit ?? 1}`,
     '-w',
     options.workDir,
   ];

@@ -241,7 +241,6 @@ do_install() {
     chmod +x "$BIN_DIR/ignite"
     
     [ -d "$tmp_dir/runtime-bun" ] && { mkdir -p "$INSTALL_DIR/runtime-bun"; cp -r "$tmp_dir/runtime-bun/"* "$INSTALL_DIR/runtime-bun/" 2>/dev/null || true; }
-    [ -d "$tmp_dir/runtime-node" ] && { mkdir -p "$INSTALL_DIR/runtime-node"; cp -r "$tmp_dir/runtime-node/"* "$INSTALL_DIR/runtime-node/" 2>/dev/null || true; }
     
     rm -rf "$tmp_dir"
     echo -e "  ${GREEN}✓${NC} Installed to $BIN_DIR/ignite" >&2

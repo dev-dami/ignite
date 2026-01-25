@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
 import { $ } from "bun";
-import { mkdir, rm, copyFile, readdir } from "node:fs/promises";
+import { mkdir, rm, copyFile } from "node:fs/promises";
 import { join } from "node:path";
 
 const ROOT = join(import.meta.dir, "..");
@@ -44,15 +44,10 @@ async function build() {
 
   console.log("\n3. Copying runtime Dockerfiles...");
   await mkdir(join(DIST_DIR, "runtime-bun"), { recursive: true });
-  await mkdir(join(DIST_DIR, "runtime-node"), { recursive: true });
 
   await copyFile(
     join(ROOT, "packages/runtime-bun/Dockerfile"),
     join(DIST_DIR, "runtime-bun/Dockerfile")
-  );
-  await copyFile(
-    join(ROOT, "packages/runtime-node/Dockerfile"),
-    join(DIST_DIR, "runtime-node/Dockerfile")
   );
 
   console.log("\n4. Creating release archives...");
@@ -61,7 +56,7 @@ async function build() {
     const tarName = `${name}.tar.gz`;
 
     try {
-      await $`tar -czvf ${join(DIST_DIR, tarName)} -C ${BIN_DIR} ${name} -C ${DIST_DIR} runtime-bun runtime-node`.quiet();
+      await $`tar -czvf ${join(DIST_DIR, tarName)} -C ${BIN_DIR} ${name} -C ${DIST_DIR} runtime-bun`.quiet();
       console.log(`   ✓ Created ${tarName}`);
     } catch (err) {
       console.error(`   ✗ Failed to create ${tarName}`);

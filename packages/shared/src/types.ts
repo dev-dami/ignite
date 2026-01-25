@@ -1,14 +1,33 @@
-export type RuntimeName = 'node' | 'bun';
-
 export interface ServiceConfig {
   service: {
     name: string;
-    runtime: RuntimeName;
+    runtime: string;
     entry: string;
     memoryMb: number;
+    cpuLimit?: number;
     timeoutMs: number;
     env?: Record<string, string>;
   };
+}
+
+export interface RuntimeSpec {
+  name: string;
+  version?: string;
+}
+
+export function parseRuntime(runtime: string): RuntimeSpec {
+  const atIndex = runtime.lastIndexOf('@');
+  if (atIndex > 0) {
+    return {
+      name: runtime.slice(0, atIndex),
+      version: runtime.slice(atIndex + 1),
+    };
+  }
+  return { name: runtime };
+}
+
+export function formatRuntime(spec: RuntimeSpec): string {
+  return spec.version ? `${spec.name}@${spec.version}` : spec.name;
 }
 
 export interface ExecutionMetrics {
@@ -50,11 +69,10 @@ export interface Warning {
   suggestion?: string;
 }
 
-export interface RuntimeConfig {
-  imageName: string;
-  containerName: string;
-  memoryLimit: string;
-  timeoutMs: number;
-  workDir: string;
-  env: Record<string, string>;
+export interface EnvironmentManifest {
+  version: string;
+  runtime: RuntimeSpec;
+  lockfile?: string;
+  checksums: Record<string, string>;
+  createdAt: string;
 }
