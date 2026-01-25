@@ -1,24 +1,16 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { parse as parseYaml } from 'yaml';
-import type { SecurityPolicy, NetworkPolicy, FilesystemPolicy, ProcessPolicy } from './security.types.js';
+import type { SecurityPolicy, NetworkPolicy, FilesystemPolicy } from './security.types.js';
 import { DEFAULT_POLICY } from './security.types.js';
 
 export interface PolicyFile {
   security?: {
     network?: {
       enabled?: boolean;
-      allowedHosts?: string[];
-      allowedPorts?: number[];
     };
     filesystem?: {
       readOnly?: boolean;
-      allowedWritePaths?: string[];
-      blockedReadPaths?: string[];
-    };
-    process?: {
-      allowSpawn?: boolean;
-      allowedCommands?: string[];
     };
   };
 }
@@ -49,22 +41,13 @@ function mergePolicies(base: SecurityPolicy, file: PolicyFile): SecurityPolicy {
 
   const network: NetworkPolicy = {
     enabled: security.network?.enabled ?? base.network.enabled,
-    allowedHosts: security.network?.allowedHosts ?? base.network.allowedHosts,
-    allowedPorts: security.network?.allowedPorts ?? base.network.allowedPorts,
   };
 
   const filesystem: FilesystemPolicy = {
     readOnly: security.filesystem?.readOnly ?? base.filesystem.readOnly,
-    allowedWritePaths: security.filesystem?.allowedWritePaths ?? base.filesystem.allowedWritePaths,
-    blockedReadPaths: security.filesystem?.blockedReadPaths ?? base.filesystem.blockedReadPaths,
   };
 
-  const process: ProcessPolicy = {
-    allowSpawn: security.process?.allowSpawn ?? base.process.allowSpawn,
-    allowedCommands: security.process?.allowedCommands ?? base.process.allowedCommands,
-  };
-
-  return { network, filesystem, process };
+  return { network, filesystem };
 }
 
 export function policyToDockerOptions(policy: SecurityPolicy): {
@@ -79,6 +62,6 @@ export function policyToDockerOptions(policy: SecurityPolicy): {
     readOnlyRootfs: policy.filesystem.readOnly,
     dropCapabilities: true,
     noNewPrivileges: true,
-    tmpfsPaths: policy.filesystem.allowedWritePaths ?? ['/tmp'],
+    tmpfsPaths: ['/tmp'],
   };
 }

@@ -78,7 +78,6 @@ async function updatePackageVersion(version: string): Promise<void> {
     "packages/http/package.json",
     "packages/shared/package.json",
     "packages/runtime-bun/package.json",
-    "packages/runtime-node/package.json",
   ];
   
   for (const pkgPath of packages) {
