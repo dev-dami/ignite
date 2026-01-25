@@ -20,7 +20,7 @@ export async function runPreflight(
   checks.push(analyzeTimeout(service, options.lastExecutionMs));
 
   if (options.imageName) {
-    checks.push(await analyzeImage(options.imageName));
+    checks.push(await analyzeImage(options.imageName, service.config.preflight?.image));
   }
 
   const overallStatus = determineOverallStatus(checks);

@@ -1,31 +1,40 @@
 import type { PreflightCheck } from '@ignite/shared';
 import type { LoadedService } from '../service/service.types.js';
 
-const MEMORY_PER_DEP_MB = 2;
-const BASE_MEMORY_MB = 50;
+const DEFAULT_MEMORY_PER_DEP_MB = 2;
+const DEFAULT_BASE_MEMORY_MB = 50;
+const DEFAULT_WARN_RATIO = 1;
+const DEFAULT_FAIL_RATIO = 0.8;
 
 export function analyzeMemory(service: LoadedService): PreflightCheck {
   const configuredMemoryMb = service.config.service.memoryMb;
   const depCount = service.dependencyCount ?? 0;
-  const estimatedMemoryMb = BASE_MEMORY_MB + depCount * MEMORY_PER_DEP_MB;
+  const memoryConfig = service.config.preflight?.memory;
+  const baseMemoryMb = memoryConfig?.baseMb ?? DEFAULT_BASE_MEMORY_MB;
+  const perDependencyMb = memoryConfig?.perDependencyMb ?? DEFAULT_MEMORY_PER_DEP_MB;
+  const warnRatio = memoryConfig?.warnRatio ?? DEFAULT_WARN_RATIO;
+  const failRatio = memoryConfig?.failRatio ?? DEFAULT_FAIL_RATIO;
+  const estimatedMemoryMb = baseMemoryMb + depCount * perDependencyMb;
+  const warnThreshold = estimatedMemoryMb * warnRatio;
+  const failThreshold = estimatedMemoryMb * failRatio;
 
-  if (configuredMemoryMb < estimatedMemoryMb * 0.8) {
+  if (configuredMemoryMb < failThreshold) {
     return {
       name: 'memory-allocation',
       status: 'fail',
       message: `Configured memory ${configuredMemoryMb}MB may be insufficient. Estimated need: ${estimatedMemoryMb}MB based on ${depCount} dependencies`,
       value: configuredMemoryMb,
-      threshold: estimatedMemoryMb,
+      threshold: Math.round(failThreshold),
     };
   }
 
-  if (configuredMemoryMb < estimatedMemoryMb) {
+  if (configuredMemoryMb < warnThreshold) {
     return {
       name: 'memory-allocation',
       status: 'warn',
       message: `Configured memory ${configuredMemoryMb}MB is close to estimated need of ${estimatedMemoryMb}MB`,
       value: configuredMemoryMb,
-      threshold: estimatedMemoryMb,
+      threshold: Math.round(warnThreshold),
     };
   }
 
@@ -34,7 +43,7 @@ export function analyzeMemory(service: LoadedService): PreflightCheck {
     status: 'pass',
     message: `Configured memory ${configuredMemoryMb}MB exceeds estimated need of ${estimatedMemoryMb}MB`,
     value: configuredMemoryMb,
-    threshold: estimatedMemoryMb,
+    threshold: Math.round(warnThreshold),
   };
 }
 
@@ -43,24 +52,27 @@ export function analyzeDependencies(service: LoadedService): PreflightCheck {
   const nodeModulesSizeMb = service.nodeModulesSize
     ? Math.round(service.nodeModulesSize / 1024 / 1024)
     : 0;
+  const dependencyConfig = service.config.preflight?.dependencies;
+  const warnCount = dependencyConfig?.warnCount ?? 100;
+  const infoCount = dependencyConfig?.infoCount ?? 50;
 
-  if (depCount > 100) {
+  if (depCount > warnCount) {
     return {
       name: 'dependency-count',
       status: 'warn',
       message: `High dependency count (${depCount}). node_modules size: ${nodeModulesSizeMb}MB. Consider reducing dependencies for faster cold starts.`,
       value: depCount,
-      threshold: 100,
+      threshold: warnCount,
     };
   }
 
-  if (depCount > 50) {
+  if (depCount > infoCount) {
     return {
       name: 'dependency-count',
       status: 'pass',
       message: `Moderate dependency count (${depCount}). node_modules size: ${nodeModulesSizeMb}MB`,
       value: depCount,
-      threshold: 50,
+      threshold: infoCount,
     };
   }
 
@@ -69,6 +81,6 @@ export function analyzeDependencies(service: LoadedService): PreflightCheck {
     status: 'pass',
     message: `Low dependency count (${depCount}). node_modules size: ${nodeModulesSizeMb}MB`,
     value: depCount,
-    threshold: 50,
+    threshold: infoCount,
   };
 }

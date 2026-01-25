@@ -8,6 +8,29 @@ export interface ServiceConfig {
     timeoutMs: number;
     env?: Record<string, string>;
   };
+  preflight?: PreflightConfig;
+}
+
+export interface PreflightConfig {
+  memory?: {
+    baseMb?: number;
+    perDependencyMb?: number;
+    warnRatio?: number;
+    failRatio?: number;
+  };
+  dependencies?: {
+    warnCount?: number;
+    infoCount?: number;
+  };
+  image?: {
+    warnMb?: number;
+    failMb?: number;
+  };
+  timeout?: {
+    minMs?: number;
+    maxMs?: number;
+    coldStartBufferMs?: number;
+  };
 }
 
 export interface RuntimeSpec {

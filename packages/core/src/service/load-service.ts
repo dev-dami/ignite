@@ -113,7 +113,65 @@ function validateServiceConfig(config: unknown): ServiceValidation {
     }
   }
 
+  const preflight = c['preflight'];
+  if (preflight !== undefined) {
+    if (typeof preflight !== 'object' || preflight === null) {
+      errors.push('preflight must be an object');
+    } else {
+      const pf = preflight as Record<string, unknown>;
+
+      validatePreflightSection(pf['memory'], 'preflight.memory', errors, {
+        baseMb: 'positive',
+        perDependencyMb: 'positive',
+        warnRatio: 'positive',
+        failRatio: 'positive',
+      });
+
+      validatePreflightSection(pf['dependencies'], 'preflight.dependencies', errors, {
+        warnCount: 'positive',
+        infoCount: 'positive',
+      });
+
+      validatePreflightSection(pf['image'], 'preflight.image', errors, {
+        warnMb: 'positive',
+        failMb: 'positive',
+      });
+
+      validatePreflightSection(pf['timeout'], 'preflight.timeout', errors, {
+        minMs: 'positive',
+        maxMs: 'positive',
+        coldStartBufferMs: 'positive',
+      });
+    }
+  }
+
   return { valid: errors.length === 0, errors };
+}
+
+function validatePreflightSection(
+  section: unknown,
+  path: string,
+  errors: string[],
+  fields: Record<string, 'positive'>
+): void {
+  if (section === undefined) return;
+  if (typeof section !== 'object' || section === null) {
+    errors.push(`${path} must be an object`);
+    return;
+  }
+
+  const record = section as Record<string, unknown>;
+  for (const [key, rule] of Object.entries(fields)) {
+    const value = record[key];
+    if (value === undefined) continue;
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      errors.push(`${path}.${key} must be a number`);
+      continue;
+    }
+    if (rule === 'positive' && value <= 0) {
+      errors.push(`${path}.${key} must be a positive number`);
+    }
+  }
 }
 
 async function getDirectorySize(dirPath: string): Promise<number> {
