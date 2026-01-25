@@ -5,6 +5,8 @@ import { runCommand } from './commands/run.js';
 import { preflightCommand } from './commands/preflight.js';
 import { reportCommand } from './commands/report.js';
 import { serveCommand } from './commands/serve.js';
+import { lockCommand } from './commands/lock.js';
+import { envCommand } from './commands/env.js';
 
 const program = new Command();
 
@@ -24,6 +26,7 @@ program
   .command('run <service>')
   .description('Execute a service in an isolated container')
   .option('-i, --input <json>', 'JSON input to pass to the service')
+  .option('-r, --runtime <runtime>', 'Override runtime (e.g., node@20, bun@1.2)')
   .option('--skip-preflight', 'Skip preflight checks before execution')
   .option('--json', 'Output results as JSON')
   .option('--audit', 'Run with security audit (blocks network, read-only filesystem)')
@@ -42,5 +45,18 @@ program
   .action(reportCommand);
 
 program.addCommand(serveCommand);
+
+program
+  .command('lock <service>')
+  .description('Create or update ignite.lock manifest for reproducible environments')
+  .option('-u, --update', 'Update existing manifest')
+  .option('-c, --check', 'Check for environment drift without modifying')
+  .action(lockCommand);
+
+program
+  .command('env [service]')
+  .description('Show environment info and available runtimes')
+  .option('--runtimes', 'List all supported runtimes and versions')
+  .action(envCommand);
 
 program.parse();
