@@ -13,7 +13,7 @@ describe('loadService', () => {
       expect(service.config.service.runtime).toBe('bun');
       expect(service.config.service.entry).toBe('index.ts');
       expect(service.config.service.memoryMb).toBe(128);
-      expect(service.config.service.timeoutMs).toBe(5000);
+      expect(service.config.service.timeoutMs).toBe(30000);
       expect(service.servicePath).toBe(servicePath);
     });
 
