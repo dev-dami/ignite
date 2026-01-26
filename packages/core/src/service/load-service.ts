@@ -127,6 +127,15 @@ function validateServiceConfig(config: unknown): ServiceValidation {
         failRatio: 'positive',
       });
 
+      const memoryConfig = pf['memory'] as Record<string, unknown> | undefined;
+      const warnRatio = memoryConfig?.['warnRatio'];
+      const failRatio = memoryConfig?.['failRatio'];
+      if (typeof warnRatio === 'number' && typeof failRatio === 'number') {
+        if (warnRatio >= failRatio) {
+          errors.push('preflight.memory.warnRatio must be less than preflight.memory.failRatio');
+        }
+      }
+
       validatePreflightSection(pf['dependencies'], 'preflight.dependencies', errors, {
         warnCount: 'positive',
         infoCount: 'positive',
@@ -137,11 +146,29 @@ function validateServiceConfig(config: unknown): ServiceValidation {
         failMb: 'positive',
       });
 
+      const imageConfig = pf['image'] as Record<string, unknown> | undefined;
+      const warnMb = imageConfig?.['warnMb'];
+      const failMb = imageConfig?.['failMb'];
+      if (typeof warnMb === 'number' && typeof failMb === 'number') {
+        if (warnMb >= failMb) {
+          errors.push('preflight.image.warnMb must be less than preflight.image.failMb');
+        }
+      }
+
       validatePreflightSection(pf['timeout'], 'preflight.timeout', errors, {
         minMs: 'positive',
         maxMs: 'positive',
         coldStartBufferMs: 'positive',
       });
+
+      const timeoutConfig = pf['timeout'] as Record<string, unknown> | undefined;
+      const minMs = timeoutConfig?.['minMs'];
+      const maxMs = timeoutConfig?.['maxMs'];
+      if (typeof minMs === 'number' && typeof maxMs === 'number') {
+        if (minMs >= maxMs) {
+          errors.push('preflight.timeout.minMs must be less than preflight.timeout.maxMs');
+        }
+      }
     }
   }
 
