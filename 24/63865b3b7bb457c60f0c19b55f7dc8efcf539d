@@ -1,0 +1,25 @@
+packages/core/src/service/load-service.ts
+  40d246eb6dd650a1 144-152
+packages/cli/src/commands/run.ts
+  40d246eb6dd650a1 64,67-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.37",
+  "base_commit_sha": "2463865b3b7bb457c60f0c19b55f7dc8efcf539d",
+  "prompts": {
+    "40d246eb6dd650a1": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_4090497eaffekxVvxO7MX8UAXg",
+        "model": "anthropic/claude-opus-4-5"
+      },
+      "human_author": "dev-dami <damiade5banjo@gmail.com>",
+      "messages": [],
+      "total_additions": 15,
+      "total_deletions": 2,
+      "accepted_lines": 13,
+      "overriden_lines": 0
+    }
+  }
+}
