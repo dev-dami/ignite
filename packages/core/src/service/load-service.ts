@@ -141,6 +141,15 @@ function validateServiceConfig(config: unknown): ServiceValidation {
         infoCount: 'positive',
       });
 
+      const dependencyConfig = pf['dependencies'] as Record<string, unknown> | undefined;
+      const warnCount = dependencyConfig?.['warnCount'];
+      const infoCount = dependencyConfig?.['infoCount'];
+      if (typeof warnCount === 'number' && typeof infoCount === 'number') {
+        if (infoCount >= warnCount) {
+          errors.push('preflight.dependencies.infoCount must be less than preflight.dependencies.warnCount');
+        }
+      }
+
       validatePreflightSection(pf['image'], 'preflight.image', errors, {
         warnMb: 'positive',
         failMb: 'positive',

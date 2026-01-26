@@ -61,8 +61,12 @@ export async function runCommand(servicePath: string, options: RunOptions): Prom
 
     if (options.auditOutput && audit) {
       const outputPath = resolve(process.cwd(), options.auditOutput);
-      await writeFile(outputPath, JSON.stringify(audit, null, 2));
-      logger.success(`Audit saved to ${outputPath}`);
+      try {
+        await writeFile(outputPath, JSON.stringify(audit, null, 2));
+        logger.success(`Audit saved to ${outputPath}`);
+      } catch (err) {
+        logger.error(`Failed to write audit to ${outputPath}: ${(err as Error).message}`);
+      }
     }
 
     if (options.json) {

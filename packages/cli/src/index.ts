@@ -13,7 +13,7 @@ const program = new Command();
 program
   .name('ignite')
   .description('Secure sandbox for AI-generated code, untrusted scripts, and JS/TS execution')
-  .version('0.7.1');
+  .version('0.7.2');
 
 program
   .command('init <name>')
