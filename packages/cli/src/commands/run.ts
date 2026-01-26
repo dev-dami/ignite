@@ -1,5 +1,5 @@
 import { writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { resolve } from 'node:path';
 import { loadService, executeService, runPreflight, createReport, formatReportAsText, getImageName, buildServiceImage, parseAuditFromOutput, formatSecurityAudit, DEFAULT_POLICY, isValidRuntime, loadPolicyFile } from '@ignite/core';
 import { logger, ConfigError } from '@ignite/shared';
 
@@ -60,7 +60,7 @@ export async function runCommand(servicePath: string, options: RunOptions): Prom
       : undefined;
 
     if (options.auditOutput && audit) {
-      const outputPath = join(process.cwd(), options.auditOutput);
+      const outputPath = resolve(process.cwd(), options.auditOutput);
       await writeFile(outputPath, JSON.stringify(audit, null, 2));
       logger.success(`Audit saved to ${outputPath}`);
     }
