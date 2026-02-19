@@ -31,3 +31,8 @@ coverage/
 
 # Docker
 .docker-cache/
+
+# Agent-only/generated local artifacts (never commit)
+agent.md
+docs/site/
+design-system/ignite-docs/MASTER.md
