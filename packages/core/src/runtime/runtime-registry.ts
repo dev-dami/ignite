@@ -12,6 +12,26 @@ export interface RuntimeConfig {
 
 const customRuntimes = new Map<string, RuntimePlugin>();
 
+function normalizeVersion(version: string): string {
+  return version.startsWith('v') ? version.slice(1) : version;
+}
+
+function versionMatches(supported: string, requested: string): boolean {
+  const normalizedSupported = normalizeVersion(supported);
+  const normalizedRequested = normalizeVersion(requested);
+
+  if (normalizedSupported === normalizedRequested) return true;
+  if (normalizedRequested.startsWith(`${normalizedSupported}.`)) return true;
+  if (normalizedRequested.startsWith(`${normalizedSupported}-`)) return true;
+  return false;
+}
+
+function isSupportedVersion(plugin: RuntimePlugin, version?: string): boolean {
+  if (!version) return true;
+  if (!plugin.supportedVersions || plugin.supportedVersions.length === 0) return true;
+  return plugin.supportedVersions.some((supported) => versionMatches(supported, version));
+}
+
 export function registerRuntime(plugin: RuntimePlugin): void {
   customRuntimes.set(plugin.name, plugin);
 }
@@ -41,6 +61,10 @@ export function getRuntimeConfig(runtime: string): RuntimeConfig {
   }
 
   const version = spec.version ?? plugin.defaultVersion;
+  if (!isSupportedVersion(plugin, version)) {
+    const supported = plugin.supportedVersions?.join(', ') ?? 'none';
+    throw new Error(`Unsupported version "${version}" for runtime "${spec.name}". Supported versions: ${supported}.`);
+  }
 
   return {
     name: spec.name,
@@ -54,7 +78,9 @@ export function getRuntimeConfig(runtime: string): RuntimeConfig {
 
 export function isValidRuntime(runtime: string): boolean {
   const spec = parseRuntime(runtime);
-  return getRuntimePlugin(spec.name) !== undefined;
+  const plugin = getRuntimePlugin(spec.name);
+  if (!plugin) return false;
+  return isSupportedVersion(plugin, spec.version);
 }
 
 export function getSupportedRuntimes(): string[] {

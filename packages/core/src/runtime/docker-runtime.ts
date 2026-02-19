@@ -33,10 +33,9 @@ export async function dockerBuild(options: DockerBuildOptions): Promise<void> {
   }
 }
 
-export async function dockerRun(options: DockerRunOptions): Promise<DockerRunResult> {
+export function buildDockerRunArgs(options: DockerRunOptions): string[] {
   const args = [
     'run',
-    '--rm',
     '--name',
     options.containerName,
     '-m',
@@ -83,6 +82,12 @@ export async function dockerRun(options: DockerRunOptions): Promise<DockerRunRes
   if (options.command) {
     args.push(...options.command);
   }
+
+  return args;
+}
+
+export async function dockerRun(options: DockerRunOptions): Promise<DockerRunResult> {
+  const args = buildDockerRunArgs(options);
 
   logger.debug(`Running: docker ${args.join(' ')}`);
 

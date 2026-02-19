@@ -6,6 +6,28 @@ const REPO = "dev-dami/ignite";
 
 type BumpType = "major" | "minor" | "patch" | null;
 
+async function ensureCleanWorkingTree(): Promise<void> {
+  const status = (await $`git status --porcelain`.text()).trim();
+  if (status.length > 0) {
+    throw new Error("Working tree is not clean. Commit or stash changes before releasing.");
+  }
+}
+
+async function getCurrentBranch(): Promise<string> {
+  const branch = (await $`git rev-parse --abbrev-ref HEAD`.text()).trim();
+  if (!branch || branch === "HEAD") {
+    throw new Error("Cannot release from detached HEAD.");
+  }
+  return branch;
+}
+
+async function runReleaseChecks(): Promise<void> {
+  console.log("\n🔎 Running release checks...");
+  await $`bun run lint`;
+  await $`bun run typecheck`;
+  await $`bun run test:unit`;
+}
+
 async function getLastTag(): Promise<string | null> {
   try {
     const result = await $`git describe --tags --abbrev=0 2>/dev/null`.text();
@@ -96,6 +118,9 @@ async function updatePackageVersion(version: string): Promise<void> {
 
 async function main() {
   console.log("\n🚀 Ignite Release Tool\n");
+  await ensureCleanWorkingTree();
+  const branch = await getCurrentBranch();
+  console.log(`Branch: ${branch}`);
 
   const lastTag = await getLastTag();
   console.log(`Last tag: ${lastTag || "none"}`);
@@ -133,6 +158,8 @@ async function main() {
     process.exit(0);
   }
 
+  await runReleaseChecks();
+
   console.log("\n📝 Updating package.json...");
   await updatePackageVersion(newVersion);
 
@@ -144,7 +171,7 @@ async function main() {
   await $`git tag ${tag}`;
 
   console.log("🚀 Pushing...");
-  await $`git push origin master`;
+  await $`git push origin ${branch}`;
   await $`git push origin ${tag}`;
 
   console.log(`\n✅ Released ${tag}`);
@@ -152,4 +179,7 @@ async function main() {
   console.log(`📋 Release: https://github.com/${REPO}/releases/tag/${tag}\n`);
 }
 
-main().catch(console.error);
+main().catch((err) => {
+  console.error(`\n❌ Release failed: ${(err as Error).message}`);
+  process.exit(1);
+});

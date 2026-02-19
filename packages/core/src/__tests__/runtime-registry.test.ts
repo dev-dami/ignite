@@ -39,6 +39,16 @@ describe('RuntimeRegistry', () => {
       expect(config.version).toBe('1.2');
     });
 
+    it('accepts patch versions for supported major/minor entries', () => {
+      const config = getRuntimeConfig('node@20.12.0');
+      expect(config.name).toBe('node');
+      expect(config.version).toBe('20.12.0');
+    });
+
+    it('throws for unsupported runtime version', () => {
+      expect(() => getRuntimeConfig('node@99')).toThrow('Unsupported version');
+    });
+
     it('throws for unknown runtime', () => {
       expect(() => getRuntimeConfig('unknown')).toThrow('Unknown runtime: unknown');
     });
@@ -63,6 +73,14 @@ describe('RuntimeRegistry', () => {
 
     it('returns true for versioned runtime', () => {
       expect(isValidRuntime('bun@1.3')).toBe(true);
+    });
+
+    it('returns true for patch version of supported runtime', () => {
+      expect(isValidRuntime('bun@1.3.2')).toBe(true);
+    });
+
+    it('returns false for unsupported version', () => {
+      expect(isValidRuntime('bun@9.9')).toBe(false);
     });
 
     it('returns false for invalid runtime', () => {
