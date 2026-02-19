@@ -1,8 +1,9 @@
 #!/usr/bin/env bun
 
 import { $ } from "bun";
-import { mkdir, rm, copyFile } from "node:fs/promises";
+import { mkdir, rm, copyFile, readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { createHash } from "node:crypto";
 
 const ROOT = join(import.meta.dir, "..");
 const BIN_DIR = join(ROOT, "bin");
@@ -17,6 +18,7 @@ const TARGETS = [
 
 async function build() {
   console.log("Building Ignite CLI binaries...\n");
+  const failures: string[] = [];
 
   await rm(BIN_DIR, { recursive: true, force: true });
   await mkdir(BIN_DIR, { recursive: true });
@@ -39,6 +41,7 @@ async function build() {
       console.log(`   ✓ Created ${name}`);
     } catch (err) {
       console.error(`   ✗ Failed to create ${name}: ${err}`);
+      failures.push(`compile:${target}`);
     }
   }
 
@@ -56,11 +59,33 @@ async function build() {
     const tarName = `${name}.tar.gz`;
 
     try {
+      const binary = Bun.file(binPath);
+      if (!(await binary.exists())) {
+        throw new Error(`missing binary ${name}`);
+      }
       await $`tar -czvf ${join(DIST_DIR, tarName)} -C ${BIN_DIR} ${name} -C ${DIST_DIR} runtime-bun`.quiet();
       console.log(`   ✓ Created ${tarName}`);
     } catch (err) {
-      console.error(`   ✗ Failed to create ${tarName}`);
+      console.error(`   ✗ Failed to create ${tarName}: ${err}`);
+      failures.push(`archive:${target}`);
     }
+  }
+
+  console.log("\n5. Generating SHA256 checksums...");
+  const releaseArchives = (await readdir(DIST_DIR))
+    .filter((file) => file.endsWith(".tar.gz"))
+    .sort();
+  const checksums: string[] = [];
+  for (const archive of releaseArchives) {
+    const contents = await readFile(join(DIST_DIR, archive));
+    const hash = createHash("sha256").update(contents).digest("hex");
+    checksums.push(`${hash}  ${archive}`);
+  }
+  await Bun.write(join(DIST_DIR, "SHA256SUMS"), checksums.join("\n") + "\n");
+  console.log("   ✓ Wrote SHA256SUMS");
+
+  if (failures.length > 0) {
+    throw new Error(`Build failed for one or more targets: ${failures.join(", ")}`);
   }
 
   console.log("\n✓ Build complete!");

@@ -5,7 +5,7 @@
 <h1 align="center">Ignite</h1>
 
 <p align="center">
-  <strong>Secure sandbox for executing AI-generated code, untrusted scripts, and JS/TS microservices</strong>
+  <strong>Secure sandbox execution for AI-generated code, untrusted scripts, and JS/TS services.</strong>
 </p>
 
 <p align="center">
@@ -16,141 +16,120 @@
   <a href="https://www.docker.com/"><img src="https://img.shields.io/badge/Docker-required-2496ED?style=flat-square&logo=docker" alt="Docker"></a>
 </p>
 
-<p align="center">
-  <a href="#install">Install</a> •
-  <a href="#quick-start">Quick Start</a> •
-  <a href="./docs/getting-started.md">Getting Started</a> •
-  <a href="./docs/walkthrough.md">Walkthrough</a> •
-  <a href="./docs/api.md">API Reference</a>
-</p>
-
----
-
-<img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png" alt="rainbow" width="100%">
-
 ## Overview
 
-Ignite runs JavaScript/TypeScript code in **secure, isolated Docker containers** with network blocking, filesystem restrictions, and security auditing. Built for AI agents that generate code, student submissions, plugin systems, or any scenario where you need to run untrusted code safely.
+Ignite runs JavaScript/TypeScript code inside isolated Docker containers with optional hardened audit mode. It is designed for systems that execute code you do not fully trust:
 
-```
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│  Untrusted   │ ──► │   Ignite     │ ──► │   Sandboxed  │
-│    Code      │     │   Sandbox    │     │  Execution   │
-└──────────────┘     └──────────────┘     └──────────────┘
-```
+- AI agent generated code
+- plugin or extension ecosystems
+- user submissions and sandboxed automation
+- security-sensitive CI checks
 
-**Use cases:**
-- **AI Agents** - Safely execute LLM-generated code
-- **Code Playgrounds** - Run student/user submissions
-- **Plugin Systems** - Isolate third-party extensions
-- **CI/CD** - Security checks before deployment
+## Why Ignite
 
-<img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png" alt="rainbow" width="100%">
-
-## Stats
-
-| Metric | Value |
-|--------|-------|
-| **Runtimes** | Bun (default), Node, Deno, QuickJS |
-| **Base Images** | Alpine (minimal) |
-| **Platforms** | Linux x64/ARM64, macOS x64/ARM64 |
-| **Dependencies** | Docker only |
-
-Note: Bun is the default runtime. Other runtimes are supported but increase the security attack surface; use them only when required and review service code and dependencies carefully.
-
-<img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png" alt="rainbow" width="100%">
-
-## Install
-
-```bash
-# One-liner (Mac & Linux)
-curl -fsSL https://raw.githubusercontent.com/dev-dami/ignite/master/install.sh | bash
-
-# Or download from releases
-# https://github.com/dev-dami/ignite/releases
-```
-
-<details>
-<summary><strong>Build from source</strong></summary>
-
-```bash
-git clone https://github.com/dev-dami/ignite.git && cd ignite
-bun install && bun run build
-bun run scripts/build-binaries.ts
-```
-</details>
-
-<img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png" alt="rainbow" width="100%">
+- Container isolation with resource limits (`memoryMb`, `cpuLimit`, `timeoutMs`)
+- Preflight checks before execution (memory, dependency load, timeout, image size)
+- Security audit mode (`--audit`) with network blocking and read-only root filesystem
+- Runtime registry with versioned runtime selection (`bun@1.3`, `node@20`, `deno@2.0`, `quickjs@latest`)
+- CLI and HTTP server interfaces
 
 ## Quick Start
 
+### 1) Install
+
 ```bash
-# Create a service
+curl -fsSL https://raw.githubusercontent.com/dev-dami/ignite/master/install.sh | bash
+ignite --version
+```
+
+### 2) Initialize a service
+
+```bash
 ignite init hello-world
 cd hello-world
+```
 
-# Run it
+### 3) Run it
+
+```bash
 ignite run .
 ```
 
-<img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png" alt="rainbow" width="100%">
-
-## Commands
-
-| Command | Description |
-|---------|-------------|
-| `ignite init <name>` | Create new service |
-| `ignite run <path>` | Execute in Docker |
-| `ignite run <path> --audit` | Execute with security audit |
-| `ignite preflight <path>` | Safety checks |
-| `ignite serve` | HTTP API server |
-| `ignite report <path>` | Execution report |
-
-<img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png" alt="rainbow" width="100%">
-
-## Security Audit
-
-Run untrusted code safely with `--audit` mode:
+### 4) Run in hardened audit mode
 
 ```bash
-ignite run ./my-service --audit
+ignite run . --audit
 ```
 
-**Enforces:**
-- Zero network access
-- Read-only filesystem (except `/tmp`)
-- Dropped Linux capabilities
-- No privilege escalation
+## CLI At A Glance
 
-**Reports violations:**
-```
-SECURITY AUDIT
+| Command | Purpose |
+|---|---|
+| `ignite init <name>` | Generate a new service scaffold |
+| `ignite run <path>` | Build + execute service in Docker |
+| `ignite preflight <path>` | Run safety checks only |
+| `ignite report <path>` | Generate preflight report |
+| `ignite lock <path>` | Create/update `ignite.lock` manifest |
+| `ignite env [path]` | Show environment/runtime information |
+| `ignite serve` | Start HTTP API server |
 
-  Network
-    ✗ connect: api.openai.com (blocked)
+## Runtime Support
 
-  Filesystem
-    ✗ write: /app/malicious.txt (blocked)
+| Runtime | Supported versions | Default |
+|---|---|---|
+| Bun | `1.0`, `1.1`, `1.2`, `1.3` | `1.3` |
+| Node | `18`, `20`, `22` | `20` |
+| Deno | `1.40`, `1.41`, `1.42`, `2.0` | `2.0` |
+| QuickJS | `2024-01-13`, `2023-12-09`, `latest` | `latest` |
 
-✗ Security Status: 2 VIOLATION(S) BLOCKED
-```
-
-Perfect for **AI agent sandboxing**, student code execution, or CI security checks.
-
-<img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png" alt="rainbow" width="100%">
+Ignite accepts version-qualified runtime values and validates compatibility. Examples: `bun@1.3`, `node@20.12.0`.
 
 ## Documentation
 
-| Doc | Description |
-|-----|-------------|
-| **[Getting Started](./docs/getting-started.md)** | 5-minute beginner guide |
-| **[Walkthrough](./docs/walkthrough.md)** | Complete tutorial |
-| **[API Reference](./docs/api.md)** | CLI & HTTP API docs |
-| **[Architecture](./docs/architecture.md)** | System design |
-| **[Preflight](./docs/preflight.md)** | Safety analysis |
+- [Getting Started](./docs/getting-started.md)
+- [Walkthrough](./docs/walkthrough.md)
+- [API Reference](./docs/api.md)
+- [Architecture](./docs/architecture.md)
+- [Preflight Checks](./docs/preflight.md)
+- [Threat Model](./docs/threat-model.md)
+- [Research Notes](./docs/research.md)
+- [Interactive Docs Website](./docs/site/index.html)
 
-<img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png" alt="rainbow" width="100%">
+## Build From Source
+
+```bash
+git clone https://github.com/dev-dami/ignite.git
+cd ignite
+bun install
+bun run build
+```
+
+To build release binaries and checksums:
+
+```bash
+bun run scripts/build-binaries.ts
+```
+
+Artifacts are written to `dist/`:
+
+- `ignite-<platform>.tar.gz`
+- `SHA256SUMS`
+
+## Verify Release Artifacts
+
+```bash
+cd dist
+sha256sum -c SHA256SUMS
+```
+
+## Security Notes
+
+`--audit` is the recommended mode for untrusted code. In this mode Ignite applies restrictive Docker flags and emits a security audit report. See [Threat Model](./docs/threat-model.md) for boundaries, assumptions, and non-goals.
+
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for setup, test workflow, and release process.
 
 ## License
 
-MIT © [dev-dami](https://github.com/dev-dami)
+MIT (see [LICENSE](./LICENSE)).

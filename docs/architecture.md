@@ -1,119 +1,84 @@
-# Ignite Architecture
+# Architecture
 
-## Overview
+Ignite is a Bun-first monorepo for secure execution of JS/TS services inside Docker.
 
-Ignite is a secure execution sandbox for JavaScript/TypeScript code. It runs code in isolated Docker containers with network blocking, filesystem restrictions, and security auditing. Designed for AI agents, untrusted code execution, and isolated microservices.
+## Packages
 
-**Bun-first** runtime.
-
-## Package Structure
-
-```
-ignite/
-├── packages/
-│   ├── cli/          # Command-line interface
-│   ├── core/         # Framework core logic
-│   ├── runtime-bun/  # Bun runtime adapter
-│   └── shared/       # Shared types and utilities
-└── examples/         # Example services
+```text
+packages/
+├── cli          # command parsing and user-facing workflows
+├── core         # service loading, runtime, preflight, execution, reporting
+├── http         # Elysia server wrapping core execution
+├── shared       # shared types, errors, logging, helpers
+└── runtime-bun  # runtime Dockerfile assets
 ```
 
-## Core Components
+## Execution Pipeline
 
-### Service Loader
-Parses `service.yaml` configuration and validates service structure.
-
-### Runtime Registry
-Manages runtime configuration for the execution environment:
-- **bun**: Bun runtime with native TypeScript support (default)
-- **node**: Node.js runtime for JS compatibility
-- **deno**: Deno runtime with secure defaults
-- **quickjs**: QuickJS runtime for minimal overhead
-
-### Docker Runtime
-Manages Docker image building and container execution.
-
-### Preflight Engine
-Performs pre-execution checks:
-- Image size analysis
-- Memory allocation estimation
-- Timeout configuration validation
-- Dependency count assessment
-
-### Execution Engine
-Runs services in isolated containers and captures metrics.
-
-### Report Generator
-Creates structured execution reports with warnings.
-
-## Data Flow
-
-```
+```text
 service.yaml
-     │
-     ▼
-┌─────────────────┐
-│  Service Loader │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│Runtime Registry │──► Select runtime (Bun default)
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐     ┌─────────────────┐
-│ Preflight Engine├────►│    Warnings     │
-└────────┬────────┘     └─────────────────┘
-         │
-         ▼
-┌─────────────────┐
-│ Execution Engine│──► Docker (Bun)
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│ Report Generator│
-└─────────────────┘
+  -> loadService()
+  -> runtime resolution (runtime registry)
+  -> build image (if needed)
+  -> runPreflight()
+  -> executeService()
+  -> report + optional security audit parsing
 ```
-
-## Runtime Isolation
-
-Each service runs in its own Docker container with:
-- Memory limits enforced at container level
-- Timeout enforcement via process monitoring
-- Volume mounting for source code (read-only)
-- Environment variable injection
-- Metrics emission via entrypoint wrapper
-
-Security note: Bun is the default runtime. Supporting additional runtimes increases the attack surface, so use them only when required and keep versions pinned.
 
 ## Runtime Registry
 
-The runtime registry (`packages/core/src/runtime/runtime-registry.ts`) provides:
+Runtime configuration is provided by built-in and optional custom runtime plugins.
 
-```typescript
-interface RuntimeConfig {
-  name: RuntimeName;           // 'bun' (default), 'node', 'deno', 'quickjs'
-  dockerfileDir: string;       // Directory containing Dockerfile
-  defaultEntry: string;        // Default entry file
-  fileExtensions: string[];    // Supported file extensions
-}
-```
+Built-ins:
 
-## Adding New Runtimes
+- `bun`
+- `node`
+- `deno`
+- `quickjs`
 
-To add a new runtime in the future:
+Runtime specs can be version-qualified (`name@version`) and are validated against supported versions.
 
-1. Create `packages/runtime-<name>/Dockerfile`
-2. Add entry to runtime registry
-3. Update shared types
+## Container Execution Model
 
-## Metrics Collection
+Core container controls include:
 
-Each runtime's Dockerfile includes an entrypoint that:
-1. Records start time
-2. Executes the service entry file
-3. Emits `IGNITE_INIT_TIME` and `IGNITE_MEMORY_MB` to stderr
+- memory and CPU limits
+- timeout termination handling
+- controlled mounts for service directory
+- environment variable injection
 
-This ensures consistent metrics across all runtimes.
+When audit mode is enabled, additional hardening options are applied (for example network disablement and read-only root filesystem).
+
+## HTTP Layer
+
+The HTTP package provides:
+
+- health endpoint
+- service listing
+- preflight endpoint
+- execute endpoint
+- optional bearer auth
+- in-memory rate limiting
+
+HTTP routes delegate execution and validation to `@ignite/core`.
+
+## Data Contracts
+
+Shared types in `@ignite/shared` define:
+
+- `ServiceConfig`
+- `PreflightResult`
+- `ExecutionMetrics`
+- environment manifest (`ignite.lock`) types
+
+These contracts are consumed consistently by CLI and HTTP packages.
+
+## Security Boundaries
+
+Ignite security posture depends on:
+
+- host OS and kernel behavior
+- Docker daemon isolation guarantees
+- runtime image integrity
+
+For full threat assumptions and non-goals, see [threat-model.md](./threat-model.md).

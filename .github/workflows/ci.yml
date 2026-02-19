@@ -7,10 +7,17 @@ on:
   pull_request:
     branches: [main, master]
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-test:
     name: Build & Test
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       
@@ -19,10 +26,13 @@ jobs:
           bun-version: latest
       
       - name: Install dependencies
-        run: bun install
+        run: bun install --frozen-lockfile
       
       - name: Build packages
         run: bun run build
+
+      - name: Lint
+        run: bun run lint
       
       - name: Type check
         run: bun run typecheck
@@ -30,9 +40,13 @@ jobs:
       - name: Run unit tests
         run: bun run test:unit
 
+      - name: Run full test suite (Docker)
+        run: bun run test
+
   release:
     name: Build & Release
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: build-and-test
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
@@ -45,7 +59,16 @@ jobs:
           bun-version: latest
       
       - name: Install dependencies
-        run: bun install
+        run: bun install --frozen-lockfile
+
+      - name: Verify tag matches package version
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "Tag v$TAG_VERSION does not match package.json version $PKG_VERSION"
+            exit 1
+          fi
       
       - name: Build packages
         run: bun run build
@@ -56,7 +79,9 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*.tar.gz
+          files: |
+            dist/*.tar.gz
+            dist/SHA256SUMS
           generate_release_notes: true
           draft: false
           prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}

@@ -1,4 +1,4 @@
-import { writeFile, mkdir } from 'node:fs/promises';
+import { writeFile, mkdir, access } from 'node:fs/promises';
 import { join } from 'node:path';
 import { logger } from '@ignite/shared';
 import { isValidRuntime, getRuntimeConfig } from '@ignite/core';
@@ -114,9 +114,27 @@ export async function initCommand(serviceName: string, options: InitOptions): Pr
   try {
     await mkdir(absolutePath, { recursive: true });
 
-    await writeFile(join(absolutePath, 'service.yaml'), getServiceYamlTemplate(serviceName, runtime, entry));
-    await writeFile(join(absolutePath, 'package.json'), getPackageJsonTemplate(serviceName, runtime, entry));
-    await writeFile(join(absolutePath, entry), isTs ? TS_INDEX_TEMPLATE : JS_INDEX_TEMPLATE);
+    const generatedFiles = [
+      join(absolutePath, 'service.yaml'),
+      join(absolutePath, 'package.json'),
+      join(absolutePath, entry),
+    ];
+
+    for (const filePath of generatedFiles) {
+      try {
+        await access(filePath);
+        throw new Error(`Refusing to overwrite existing file: ${filePath}`);
+      } catch (err) {
+        const fileErr = err as NodeJS.ErrnoException;
+        if (fileErr.code !== 'ENOENT') {
+          throw err;
+        }
+      }
+    }
+
+    await writeFile(join(absolutePath, 'service.yaml'), getServiceYamlTemplate(serviceName, runtime, entry), { flag: 'wx' });
+    await writeFile(join(absolutePath, 'package.json'), getPackageJsonTemplate(serviceName, runtime, entry), { flag: 'wx' });
+    await writeFile(join(absolutePath, entry), isTs ? TS_INDEX_TEMPLATE : JS_INDEX_TEMPLATE, { flag: 'wx' });
 
     logger.success(`Initialized ${runtime} service "${serviceName}" at ${absolutePath}`);
     logger.info('');

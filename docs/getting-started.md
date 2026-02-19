@@ -1,140 +1,98 @@
-# Getting Started with Ignite
+# Getting Started
 
-Run code securely in under 5 minutes. Perfect for AI agents, untrusted scripts, or isolated microservices.
+This guide gets you from zero to first secure execution in under five minutes.
 
 ## Prerequisites
 
-- **Docker** - [Install Docker](https://docs.docker.com/get-docker/)
-- That's it. Ignite is a single binary.
+- Docker installed and running
+- Ignite installed (single binary)
 
-## Installation
+Install Docker: <https://docs.docker.com/get-docker/>
+
+## Install Ignite
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/dev-dami/ignite/master/install.sh | bash
-```
-
-Verify installation:
-
-```bash
 ignite --version
 ```
 
-## Create Your First Service
+## Create a Service
 
 ```bash
 ignite init hello-world
 cd hello-world
 ```
 
-This creates:
+Generated files:
 
-```
+```text
 hello-world/
-├── index.ts          # Your code
-├── service.yaml      # Configuration
-└── package.json      # Dependencies
+├── service.yaml
+├── package.json
+└── index.ts
 ```
 
-## Run It
+`ignite init` refuses to overwrite existing generated files.
+
+## Execute
 
 ```bash
 ignite run .
 ```
 
-You should see output like:
-
-```
-[ignite] Loading service: hello-world
-[ignite] Building Docker image...
-[ignite] Running preflight checks...
-[ignite] Executing...
-Hello, World!
-[ignite] Completed in 1.2s
-```
-
-## Pass Input Data
+## Pass Input
 
 ```bash
-ignite run . --input '{"name": "Developer"}'
+ignite run . --input '{"name":"Developer"}'
 ```
 
-Output:
+Input is available via `process.env.IGNITE_INPUT`.
 
-```
-Hello, Developer!
-```
-
-## Run in Secure Sandbox Mode
-
-For untrusted code (AI-generated, user submissions, etc.), use `--audit`:
+## Run in Hardened Audit Mode
 
 ```bash
 ignite run . --audit
 ```
 
-This enforces:
-- **No network access** - Code can't call external APIs
-- **Read-only filesystem** - Can't write outside `/tmp`
-- **Dropped capabilities** - No privilege escalation
-- **Security report** - Shows blocked violations
+Audit mode applies restrictive sandbox flags and prints a security audit summary.
 
-## Check Safety Before Running
+## Preflight Checks
 
 ```bash
 ignite preflight .
 ```
 
-This analyzes:
-- Memory allocation vs dependencies
-- Timeout configuration
-- Docker image size
-- Dependency security
+Preflight validates memory, dependencies, timeout, and (when image exists) image size.
 
-## What Just Happened?
+## Serve Over HTTP
 
-1. **Ignite loaded** your `service.yaml` configuration
-2. **Built a Docker image** with your code and dependencies
-3. **Ran preflight checks** to ensure safe execution
-4. **Executed your code** in an isolated container
-5. **Returned the output** and cleaned up
-
-## Next Steps
-
-- **[Full Walkthrough](./walkthrough.md)** - Build a real-world service
-- **[API Reference](./api.md)** - Complete CLI and HTTP API docs
-- **[Architecture](./architecture.md)** - How Ignite works under the hood
-
-## Common Issues
-
-### Docker not running
-
-```
-Error: Cannot connect to Docker daemon
+```bash
+ignite serve --services . --port 3000
 ```
 
-**Fix**: Start Docker Desktop or the Docker service.
+Then call:
 
-### Permission denied
-
+```bash
+curl -X POST http://localhost:3000/services/hello-world/execute \
+  -H 'Content-Type: application/json' \
+  -d '{"input":{"name":"Developer"}}'
 ```
-Error: Permission denied while trying to connect to Docker
-```
 
-**Fix**: Add your user to the docker group:
+## Troubleshooting
+
+### Docker daemon not reachable
+
+Start Docker Desktop or the Docker service and retry.
+
+### Docker permission denied (Linux)
 
 ```bash
 sudo usermod -aG docker $USER
-# Then log out and back in
+# sign out and sign in again
 ```
 
-### Port already in use
+## Next Steps
 
-```
-Error: Port 3000 is already in use
-```
-
-**Fix**: Use a different port:
-
-```bash
-ignite serve --port 3001
-```
+- [Walkthrough](./walkthrough.md)
+- [API Reference](./api.md)
+- [Threat Model](./threat-model.md)
