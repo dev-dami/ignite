@@ -1,755 +1,318 @@
 # API Reference
 
-Complete reference for Ignite CLI commands and HTTP API endpoints.
+Authoritative reference for Ignite CLI and HTTP endpoints.
 
-## Table of Contents
+## CLI
 
-- [CLI Commands](#cli-commands)
-  - [ignite init](#ignite-init)
-  - [ignite run](#ignite-run)
-  - [ignite preflight](#ignite-preflight)
-  - [ignite serve](#ignite-serve)
-  - [ignite report](#ignite-report)
-  - [ignite lock](#ignite-lock)
-  - [ignite env](#ignite-env)
-- [HTTP API](#http-api)
-  - [Health Check](#get-health)
-  - [List Services](#get-services)
-  - [Get Service](#get-servicesname)
-  - [Run Preflight](#get-servicesnamepreflight)
-  - [Execute Service](#post-servicesnameexecute)
-- [Configuration](#configuration)
-  - [service.yaml](#serviceyaml-schema)
+### `ignite init <name>`
 
----
-
-## CLI Commands
-
-### ignite init
-
-Create a new service from template.
+Initialize a new service scaffold.
 
 ```bash
 ignite init <name> [options]
 ```
 
-**Arguments:**
+Options:
 
-| Argument | Description |
-|----------|-------------|
-| `name` | Service name (creates directory) |
+- `-p, --path <path>`: custom output path
+- `-r, --runtime <runtime>`: runtime spec (default `bun`)
 
-**Options:**
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--runtime <runtime>` | `bun` | Runtime: `bun`, `node`, `deno`, `quickjs` (with optional version: `bun@1.2`) |
-| `--path <path>` | `./<name>` | Custom path for the service directory |
-
-**Examples:**
+Examples:
 
 ```bash
-# Create Bun service (default)
 ignite init my-service
-
-# Create Node.js service
-ignite init my-service --runtime node
-
-# Create with specific version
 ignite init my-service --runtime node@20
-
-# Create Deno service
-ignite init my-service --runtime deno
-
-# Create QuickJS service (fast cold start)
-ignite init my-service --runtime quickjs
+ignite init my-service --path ./services/my-service
 ```
 
-**Generated Files:**
+Notes:
 
-```
-my-service/
-├── index.ts          # Entry point
-├── service.yaml      # Configuration
-└── package.json      # Dependencies
-```
+- Runtime is validated against supported runtimes/versions.
+- Existing generated files are not overwritten.
 
----
-
-### ignite run
+### `ignite run <service>`
 
 Execute a service in Docker.
 
 ```bash
-ignite run <path> [options]
+ignite run <service> [options]
 ```
 
-**Arguments:**
+Options:
 
-| Argument | Description |
-|----------|-------------|
-| `path` | Path to service directory |
+- `-i, --input <json>`
+- `-r, --runtime <runtime>`
+- `--skip-preflight`
+- `--json`
+- `--audit`
+- `--audit-output <file>`
 
-**Options:**
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--input <json>` | `{}` | Input data as JSON string |
-| `--runtime <runtime>` | (from service.yaml) | Override runtime (e.g., `node@20`, `bun@1.2`) |
-| `--skip-preflight` | `false` | Skip safety checks |
-| `--json` | `false` | Output results as JSON |
-| `--audit` | `false` | Run with security audit (blocks network, read-only filesystem) |
-| `--audit-output <file>` | - | Write security audit to a JSON file |
-
-**Examples:**
+Examples:
 
 ```bash
-# Basic execution
 ignite run ./my-service
-
-# With input data
-ignite run ./my-service --input '{"name": "World"}'
-
-# Override runtime version
+ignite run ./my-service --input '{"name":"world"}'
 ignite run ./my-service --runtime node@22
-
-# Skip preflight (development only)
-ignite run ./my-service --skip-preflight
-
-# Security audit mode (for AI agent sandboxing)
-ignite run ./my-service --audit
+ignite run ./my-service --audit --json --audit-output audit.json
 ```
 
-**Security Audit Mode (`--audit`):**
+Behavior note:
 
-When running with `--audit`, the service runs in a hardened sandbox:
+- `--skip-preflight` bypasses fail-fast blocking, but preflight still runs and is included in reporting.
 
-- Network completely disabled (`--network=none`)
-- Read-only root filesystem (`--read-only`)
-- Writable `/tmp` only (`--tmpfs /tmp`)
-- All Linux capabilities dropped (`--cap-drop=ALL`)
-- No privilege escalation (`--security-opt=no-new-privileges`)
+### `ignite preflight <service>`
 
-The audit report shows any blocked security violations:
-
-```
-SECURITY AUDIT
-
-Policy:
-  Network: blocked
-  Filesystem: read-only
-  Process spawn: blocked
-
-Events:
-
-Network
-  ✗ connect: api.openai.com (blocked)
-
-Filesystem
-  ✗ write: /app/malicious.txt (blocked)
-
-──────────────────────────────────────────────────
-✗ Security Status: 2 VIOLATION(S) BLOCKED
-```
-
-When `--json` is used with `--audit`, the JSON output includes a `securityAudit` field.
-
-**Output:**
-
-```
-[ignite] Loading service: my-service
-[ignite] Building Docker image...
-[ignite] Running preflight checks...
-[ignite] Executing...
-Hello, World!
-[ignite] Completed in 1.2s
-```
-
-**Exit Codes:**
-
-| Code | Meaning |
-|------|---------|
-| 0 | Success |
-| 1 | Execution error |
-| 2 | Preflight failed |
-| 3 | Configuration error |
-
----
-
-### ignite preflight
-
-Run safety analysis without executing.
+Run preflight checks without execution.
 
 ```bash
-ignite preflight <path> [options]
+ignite preflight <service>
 ```
 
-**Arguments:**
-
-| Argument | Description |
-|----------|-------------|
-| `path` | Path to service directory |
-
-**Options:**
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--format <format>` | `text` | Output format: `text` or `json` |
-
-**Examples:**
+Example:
 
 ```bash
-# Text output
 ignite preflight ./my-service
-
-# JSON output
-ignite preflight ./my-service --format json
 ```
 
-**Checks Performed:**
+Exit behavior:
 
-| Check | Description |
-|-------|-------------|
-| Memory | Memory allocation vs requirements |
-| Timeout | Timeout configuration |
-| Image Size | Docker image size estimation |
-| Dependencies | Dependency count and analysis |
+- exits non-zero when overall status is `fail`
 
----
+### `ignite report <service>`
 
-### ignite serve
+Generate preflight report.
 
-Start HTTP API server.
+```bash
+ignite report <service> [options]
+```
+
+Options:
+
+- `-o, --output <file>`
+- `--json`
+
+Examples:
+
+```bash
+ignite report ./my-service
+ignite report ./my-service --json
+ignite report ./my-service --json --output report.json
+```
+
+### `ignite serve`
+
+Start HTTP server.
 
 ```bash
 ignite serve [options]
 ```
 
-**Options:**
+Options:
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--port <port>` | `3000` | Server port |
-| `--host <host>` | `0.0.0.0` | Server host |
-| `--services <path>` | `.` | Path to services directory |
+- `-p, --port <port>` (default `3000`)
+- `-h, --host <host>` (default `localhost`)
+- `-s, --services <path>` (default `./services`)
 
-**Examples:**
+Example:
 
 ```bash
-# Default settings
-ignite serve
-
-# Custom port and services path
-ignite serve --port 8080 --services ./services
-
-# Bind to localhost only
-ignite serve --host 127.0.0.1
+ignite serve --services ./services --host 127.0.0.1 --port 3000
 ```
 
-**Output:**
+### `ignite lock <service>`
 
-```
-[ignite] Starting HTTP server...
-[ignite] Services directory: ./services
-[ignite] Listening on http://0.0.0.0:3000
-```
-
----
-
-### ignite report
-
-Generate execution report for a service.
+Manage `ignite.lock` environment manifest.
 
 ```bash
-ignite report <path> [options]
+ignite lock <service> [options]
 ```
 
-**Arguments:**
+Options:
 
-| Argument | Description |
-|----------|-------------|
-| `path` | Path to service directory |
+- `-u, --update`
+- `-c, --check`
 
-**Options:**
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--format <format>` | `text` | Output format: `text` or `json` |
-| `--output <file>` | `stdout` | Output file path |
-
-**Examples:**
+Examples:
 
 ```bash
-# Console output
-ignite report ./my-service
-
-# JSON to file
-ignite report ./my-service --format json --output report.json
-```
-
----
-
-### ignite lock
-
-Create or update environment manifest (`ignite.lock`) for reproducible builds.
-
-```bash
-ignite lock <path> [options]
-```
-
-**Arguments:**
-
-| Argument | Description |
-|----------|-------------|
-| `path` | Path to service directory |
-
-**Options:**
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--update` | `false` | Update existing manifest |
-| `--check` | `false` | Check for drift without modifying |
-
-**Examples:**
-
-```bash
-# Create ignite.lock
 ignite lock ./my-service
-
-# Update existing manifest
 ignite lock ./my-service --update
-
-# Check for environment drift (CI/CD)
 ignite lock ./my-service --check
 ```
 
-**Generated File (`ignite.lock`):**
+### `ignite env [service]`
 
-```yaml
-version: "1.0"
-runtime:
-  name: bun
-  version: "1.3"
-lockfile: bun.lockb
-checksums:
-  package.json: sha256:abc123...
-  bun.lockb: sha256:def456...
-createdAt: "2024-01-15T10:30:00.000Z"
-```
-
-**Exit Codes:**
-
-| Code | Meaning |
-|------|---------|
-| 0 | Success / No drift detected |
-| 1 | Drift detected (with `--check`) |
-
----
-
-### ignite env
-
-Display environment information and available runtimes.
+Show environment info or list runtimes.
 
 ```bash
-ignite env [path] [options]
+ignite env [service] [options]
 ```
 
-**Arguments:**
+Options:
 
-| Argument | Description |
-|----------|-------------|
-| `path` | Path to service directory (optional) |
+- `--runtimes`
 
-**Options:**
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--runtimes` | `false` | List all supported runtimes |
-
-**Examples:**
+Examples:
 
 ```bash
-# Show service environment info
 ignite env ./my-service
-
-# List all available runtimes
 ignite env --runtimes
 ```
 
-**Output (service info):**
-
-```
-Service: my-service
-Runtime: bun@1.3
-
-Environment: Locked
-  Runtime: bun@1.3
-  Locked at: 2024-01-15T10:30:00.000Z
-  Lockfile: bun.lockb
-
-✓ Environment matches manifest
-```
-
-**Output (runtimes list):**
-
-```
-Supported Runtimes:
-
-  bun
-    Default entry: index.ts
-    Extensions: .ts, .js, .tsx, .jsx
-    Versions: 1.0, 1.1, 1.2, 1.3 (default: 1.3)
-
-  node
-    Default entry: index.js
-    Extensions: .js, .mjs, .cjs
-    Versions: 18, 20, 22 (default: 20)
-
-  deno
-    Default entry: index.ts
-    Extensions: .ts, .js, .tsx, .jsx
-    Versions: 1.40, 1.41, 1.42, 2.0 (default: 2.0)
-
-  quickjs
-    Default entry: index.js
-    Extensions: .js
-    Versions: latest (default: latest)
-
-Usage examples:
-  service.yaml: runtime: bun
-  service.yaml: runtime: bun@1.2
-  service.yaml: runtime: node@20
-  ignite run . --runtime node@22
-```
-
----
-
 ## HTTP API
 
-Base URL: `http://localhost:3000` (default)
+Base URL defaults to `http://localhost:3000`.
 
-### GET /health
+### `GET /health`
 
-Health check endpoint.
-
-**Response:**
+Response:
 
 ```json
 {
   "status": "ok",
-  "timestamp": "2024-01-15T10:30:00.000Z"
+  "version": "0.1.0",
+  "uptime": 123
 }
 ```
 
----
+### `GET /services`
 
-### GET /services
+List service directories under configured services path.
 
-List all available services.
-
-**Response:**
+Response:
 
 ```json
 {
-  "services": [
-    {
-      "name": "data-processor",
-      "runtime": "bun",
-      "entry": "index.ts"
-    },
-    {
-      "name": "image-resizer",
-      "runtime": "node",
-      "entry": "index.js"
-    }
-  ]
+  "services": ["service-a", "service-b"]
 }
 ```
 
----
+### `GET /services/:serviceName/preflight`
 
-### GET /services/:name
+Run preflight for a service.
 
-Get service details.
-
-**Parameters:**
-
-| Parameter | Description |
-|-----------|-------------|
-| `name` | Service name |
-
-**Response:**
+Response:
 
 ```json
 {
-  "name": "data-processor",
-  "runtime": "bun",
-  "entry": "index.ts",
-  "memoryMb": 128,
-  "timeoutMs": 30000,
-  "env": {
-    "DEBUG": "true"
+  "serviceName": "data-processor",
+  "preflight": {
+    "serviceName": "data-processor",
+    "timestamp": "2026-01-01T00:00:00.000Z",
+    "checks": [],
+    "overallStatus": "pass"
   }
 }
 ```
 
-**Errors:**
+### `POST /services/:serviceName/execute`
 
-| Status | Description |
-|--------|-------------|
-| 404 | Service not found |
+Execute service.
 
----
-
-### GET /services/:name/preflight
-
-Run preflight checks for a service.
-
-**Parameters:**
-
-| Parameter | Description |
-|-----------|-------------|
-| `name` | Service name |
-
-**Response:**
+Request body:
 
 ```json
 {
-  "success": true,
-  "checks": [
-    {
-      "name": "memory",
-      "status": "passed",
-      "details": {
-        "allocated": 128,
-        "estimated": 64
-      }
-    },
-    {
-      "name": "timeout",
-      "status": "passed",
-      "details": {
-        "configured": 30000
-      }
-    },
-    {
-      "name": "imageSize",
-      "status": "passed",
-      "details": {
-        "estimatedMb": 105
-      }
-    },
-    {
-      "name": "dependencies",
-      "status": "passed",
-      "details": {
-        "count": 2
-      }
-    }
-  ]
-}
-```
-
-**Errors:**
-
-| Status | Description |
-|--------|-------------|
-| 404 | Service not found |
-| 422 | Preflight failed |
-
----
-
-### POST /services/:name/execute
-
-Execute a service.
-
-**Parameters:**
-
-| Parameter | Description |
-|-----------|-------------|
-| `name` | Service name |
-
-**Request Body:**
-
-```json
-{
-  "input": {
-    "data": [1, 2, 3],
-    "operation": "sum"
-  },
+  "input": { "data": [1, 2, 3] },
   "skipPreflight": false,
+  "skipBuild": false,
   "audit": true
 }
 ```
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `input` | object | No | Input data passed to service |
-| `skipPreflight` | boolean | No | Skip safety checks |
-| `skipBuild` | boolean | No | Skip image build if already built |
-| `audit` | boolean | No | Run with security audit |
-
-**Response:**
+Response:
 
 ```json
 {
   "success": true,
-  "output": "{\"result\":6}",
+  "serviceName": "data-processor",
   "metrics": {
-    "executionTimeMs": 1234,
-    "memoryUsedMb": 32,
-    "exitCode": 0
+    "executionTimeMs": 120,
+    "memoryUsageMb": 40,
+    "coldStart": true,
+    "exitCode": 0,
+    "stdout": "...",
+    "stderr": "..."
+  },
+  "preflight": {
+    "serviceName": "data-processor",
+    "timestamp": "2026-01-01T00:00:00.000Z",
+    "checks": [],
+    "overallStatus": "pass"
+  },
+  "securityAudit": {
+    "events": [],
+    "summary": {
+      "networkAttempts": 0,
+      "networkBlocked": 0,
+      "filesystemReads": 0,
+      "filesystemWrites": 0,
+      "filesystemBlocked": 0,
+      "processSpawns": 0,
+      "processBlocked": 0,
+      "overallStatus": "clean"
+    },
+    "policy": {
+      "network": { "enabled": false },
+      "filesystem": { "readOnly": true },
+      "process": { "allowSpawn": false }
+    }
   }
 }
 ```
 
-When `audit` is true, the response includes `securityAudit`.
-
-**Errors:**
-
-| Status | Description |
-|--------|-------------|
-| 404 | Service not found |
-| 422 | Preflight failed |
-| 500 | Execution error |
-
-**Error Response:**
+Error response shape (execute endpoint):
 
 ```json
 {
   "success": false,
-  "error": {
-    "code": "EXECUTION_TIMEOUT",
-    "message": "Service execution timed out after 30000ms"
-  }
+  "serviceName": "data-processor",
+  "error": "message"
 }
 ```
 
----
+Common status codes:
 
-## Configuration
+- `400`: invalid service name or preflight fail in execute path
+- `401`: missing/invalid bearer token when API key auth is configured
+- `404`: route not found
+- `429`: rate limit exceeded
+- `500`: internal/service execution errors
 
-### service.yaml Schema
-
-```yaml
-service:
-  # Required fields
-  name: string           # Service identifier (alphanumeric, hyphens)
-  runtime: string        # Runtime with optional version (see below)
-  entry: string          # Entry file path
-
-  # Optional fields
-  memoryMb: number       # Memory limit (default: 128)
-  cpuLimit: number       # CPU limit in cores (default: 1)
-  timeoutMs: number      # Timeout (default: 30000)
-  env: object            # Environment variables
-  dependencies: array    # Explicit dependencies (auto-detected by default)
-
-preflight:
-  memory:
-    baseMb: number            # Base memory estimate (default: 50)
-    perDependencyMb: number   # Memory per dependency (default: 2)
-    warnRatio: number         # Warning threshold ratio (default: 1)
-    failRatio: number         # Failure threshold ratio (default: 0.8)
-  dependencies:
-    warnCount: number         # Warn if dependency count exceeds (default: 100)
-    infoCount: number         # Info threshold for moderate count (default: 50)
-  image:
-    warnMb: number            # Image size warn threshold (default: 500)
-    failMb: number            # Image size fail threshold (default: 1000)
-  timeout:
-    minMs: number             # Minimum timeout (default: 100)
-    maxMs: number             # Maximum recommended timeout (default: 30000)
-    coldStartBufferMs: number # Cold start buffer (default: 500)
-```
-
-**Supported Runtimes:**
-
-| Runtime | Versions | Default Entry | Notes |
-|---------|----------|---------------|-------|
-| `bun` | 1.0, 1.1, 1.2, 1.3 | index.ts | TypeScript native, fastest |
-| `node` | 18, 20, 22 | index.js | Node.js compatibility |
-| `deno` | 1.40, 1.41, 1.42, 2.0 | index.ts | Secure by default |
-| `quickjs` | latest | index.js | Ultra-fast cold start (~10ms) |
-
-Security note: Bun is the default runtime. Using other runtimes increases the attack surface; only use them when required and keep runtime versions pinned.
-
-**Runtime Version Syntax:**
-
-```yaml
-# Use default version
-runtime: bun
-
-# Specify version
-runtime: bun@1.2
-runtime: node@20
-runtime: deno@2.0
-```
-
-**Full Example:**
+## Configuration Schema (`service.yaml`)
 
 ```yaml
 service:
   name: my-service
   runtime: bun@1.3
   entry: index.ts
-  memoryMb: 256
-  cpuLimit: 0.5
-  timeoutMs: 60000
+  memoryMb: 128
+  cpuLimit: 1
+  timeoutMs: 30000
   env:
     NODE_ENV: production
-    API_KEY: "${API_KEY}"
-    DEBUG: "false"
+
+preflight:
+  memory:
+    baseMb: 50
+    perDependencyMb: 2
+    warnRatio: 1
+    failRatio: 0.8
   dependencies:
-    - lodash
-    - axios
+    warnCount: 100
+    infoCount: 50
+  image:
+    warnMb: 500
+    failMb: 1000
+  timeout:
+    minMs: 100
+    maxMs: 30000
+    coldStartBufferMs: 500
 ```
 
-### Environment Variable Substitution
+Security policy file names (loaded in audit mode):
 
-Use `${VAR_NAME}` syntax to inject environment variables:
-
-```yaml
-env:
-  API_KEY: "${API_KEY}"        # From host environment
-  DB_URL: "${DATABASE_URL}"    # From host environment
-  DEBUG: "true"                # Static value
-```
-
-### ignite.policy.yaml (Security Policy)
-
-Create an `ignite.policy.yaml` file to customize security settings:
-
-```yaml
-security:
-  network:
-    enabled: false              # Block all network (default)
-
-  filesystem:
-    readOnly: true              # Read-only root filesystem
-
-  process:
-    allowSpawn: false           # Block spawning child processes
-    allowedCommands: []         # Optional: allow specific commands
-```
-
-The policy file is automatically loaded when using `--audit` mode.
-
-### Memory Guidelines
-
-| Use Case | Recommended Memory |
-|----------|-------------------|
-| Simple data processing | 64 MB |
-| API calls, JSON parsing | 128 MB |
-| File processing | 256 MB |
-| Image processing | 512 MB |
-| Heavy computation | 1024 MB |
-
-### Timeout Guidelines
-
-| Use Case | Recommended Timeout |
-|----------|---------------------|
-| Quick calculations | 5000 ms |
-| API calls | 30000 ms |
-| File processing | 60000 ms |
-| Heavy computation | 300000 ms |
+- `ignite.policy.yaml`
+- `ignite.policy.yml`
+- `.ignite-policy.yaml`
+- `.ignite-policy.yml`

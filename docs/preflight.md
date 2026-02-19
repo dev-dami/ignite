@@ -1,70 +1,46 @@
 # Preflight Checks
 
-## Overview
+Preflight checks run before execution to surface configuration risk early.
 
-Preflight checks analyze your service before execution to identify potential issues related to resource allocation, performance, and configuration.
+## What Is Evaluated
 
-## Available Checks
+- memory sizing
+- dependency load
+- timeout configuration
+- image size (when image name is available)
 
-### Memory Allocation
-Estimates required memory based on dependency count and compares against configured limits.
+## Check Semantics
 
-**Formula:**
-```
-estimated_memory = BASE_MEMORY (50MB) + (dependency_count * 2MB)
-```
+Each check returns:
 
-**Status:**
-- PASS: Configured memory > estimated need
-- WARN: Configured memory close to estimated need
-- FAIL: Configured memory < 80% of estimated need
+- `name`
+- `status` (`pass`, `warn`, `fail`)
+- `message`
+- optional `value`
+- optional `threshold`
 
-### Dependency Count
-Analyzes `node_modules` for potential cold start impact.
+Overall preflight status:
 
-**Thresholds:**
-- < 50 dependencies: PASS
-- 50-100 dependencies: PASS with note
-- > 100 dependencies: WARN
+- `fail` if any check fails
+- `warn` if no failures and at least one warning
+- `pass` otherwise
 
-### Timeout Configuration
-Validates timeout settings are within acceptable ranges.
-
-**Thresholds:**
-- Minimum: 100ms
-- Maximum recommended: 30,000ms
-
-### Image Size (when image exists)
-Checks Docker image size for deployment concerns.
-
-**Thresholds:**
-- < 500MB: PASS
-- 500-1000MB: WARN
-- > 1000MB: FAIL
-
-## Running Preflight
+## Run Manually
 
 ```bash
 ignite preflight ./my-service
 ```
 
-## Interpreting Results
+## Preflight During `ignite run`
 
-Each check returns:
-- **name**: Check identifier
-- **status**: pass | warn | fail
-- **message**: Human-readable explanation
-- **value**: Measured value
-- **threshold**: Comparison threshold
+`ignite run` performs preflight as part of execution flow.
 
-## Customizing Thresholds
+- default behavior: `fail` status blocks execution
+- with `--skip-preflight`: run continues even if preflight returns `fail`
 
-Thresholds can be configured via `service.yaml`:
+## Custom Thresholds (`service.yaml`)
 
 ```yaml
-service:
-  name: my-service
-
 preflight:
   memory:
     baseMb: 60
@@ -82,3 +58,9 @@ preflight:
     maxMs: 45000
     coldStartBufferMs: 750
 ```
+
+Validation rules:
+
+- all numeric fields must be positive
+- ratio/count pairs must satisfy ordering constraints
+- invalid preflight config causes service validation failure

@@ -1,113 +1,117 @@
 # Contributing to Ignite
 
-Thanks for your interest in contributing to Ignite! This document outlines the process for contributing.
+Thanks for contributing. This guide covers local setup, engineering workflow, and release expectations.
 
-## Getting Started
+## Prerequisites
 
-1. Fork the repository
-2. Clone your fork:
-   ```bash
-   git clone https://github.com/YOUR_USERNAME/ignite.git
-   cd ignite
-   ```
-3. Install dependencies:
-   ```bash
-   bun install
-   ```
-4. Build the project:
-   ```bash
-   bun run build
-   ```
+- Bun `>= 1.3.0`
+- Docker (required for full integration tests)
+
+## Local Setup
+
+```bash
+git clone https://github.com/YOUR_USERNAME/ignite.git
+cd ignite
+bun install
+bun run build
+```
+
+## Repository Layout
+
+```text
+ignite/
+├── packages/
+│   ├── cli/          # CLI commands and UX
+│   ├── core/         # Service loading, runtime, preflight, execution
+│   ├── http/         # HTTP API server
+│   ├── shared/       # Shared types/errors/logging
+│   └── runtime-bun/  # Runtime Dockerfile assets
+├── docs/             # Product and design docs
+├── examples/         # Example services
+├── scripts/          # Build and release scripts
+└── .github/workflows # CI/CD workflows
+```
 
 ## Development Workflow
 
-### Running Tests
+### 1) Create a branch
 
 ```bash
-# Unit tests only (no Docker required)
-bun run test:unit
+git checkout -b feature/your-change
+```
 
-# All tests (requires Docker)
+### 2) Implement changes with tests
+
+Use Bun for installs and scripts. Do not use npm.
+
+### 3) Run checks
+
+```bash
+bun run lint
+bun run typecheck
+bun run test:unit
 bun run test
 ```
 
-### Building
+Notes:
+- `test:unit` excludes Docker-heavy suites.
+- `test` is the full suite and requires Docker.
+
+## Commit Style
+
+We use Conventional Commits:
+
+- `feat:` new feature
+- `fix:` bug fix
+- `docs:` documentation change
+- `refactor:` non-behavioral code refactor
+- `test:` test changes
+- `chore:` maintenance
+
+Example:
 
 ```bash
-# Build all packages
-bun run build
-
-# Build binaries
-bun run scripts/build-binaries.ts
+git commit -m "feat(cli): validate runtime version overrides"
 ```
 
-### Project Structure
+## Pull Requests
 
+Please keep PRs scoped and include:
+
+- clear summary
+- rationale and behavioral impact
+- verification commands and results
+- docs updates for user-visible behavior changes
+
+## CI and Release
+
+CI (`.github/workflows/ci.yml`) runs on pushes and PRs:
+
+1. `bun install --frozen-lockfile`
+2. build
+3. lint
+4. typecheck
+5. unit tests
+6. full tests (Docker)
+
+Release job runs on `v*` tags and:
+
+- verifies tag version matches `package.json`
+- builds binaries
+- publishes archives and `SHA256SUMS`
+
+### Local release script
+
+```bash
+bun run scripts/release.ts
 ```
-ignite/
-├── packages/
-│   ├── cli/       # Command-line interface
-│   ├── core/      # Core functionality (loader, preflight, execution)
-│   ├── http/      # HTTP server
-│   ├── shared/    # Shared types and utilities
-│   └── runtime-bun/   # Bun runtime Dockerfile
-├── examples/      # Example services
-├── docs/          # Documentation
-└── scripts/       # Build scripts
-```
 
-## Making Changes
+The script now enforces:
 
-1. Create a new branch:
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
+- clean working tree
+- branch detection (no hardcoded branch)
+- pre-release checks (`lint`, `typecheck`, `test:unit`)
 
-2. Make your changes
+## Security Reporting
 
-3. Ensure tests pass:
-   ```bash
-   bun run test:unit
-   ```
-
-4. Commit your changes:
-   ```bash
-   git commit -m "feat: add your feature"
-   ```
-
-   We follow [Conventional Commits](https://www.conventionalcommits.org/):
-   - `feat:` - New feature
-   - `fix:` - Bug fix
-   - `docs:` - Documentation only
-   - `refactor:` - Code refactoring
-   - `test:` - Adding tests
-   - `chore:` - Maintenance
-
-5. Push to your fork:
-   ```bash
-   git push origin feature/your-feature-name
-   ```
-
-6. Open a Pull Request
-
-## Pull Request Guidelines
-
-- Keep PRs focused on a single change
-- Update documentation if needed
-- Add tests for new functionality
-- Ensure CI passes
-- Follow the existing code style
-
-## Reporting Issues
-
-When reporting issues, please include:
-
-- Ignite version (`ignite --version`)
-- Operating system and version
-- Docker version (`docker --version`)
-- Steps to reproduce
-- Expected vs actual behavior
-
-## Questions?
-
-Feel free to open an issue for questions or discussions.
+If you discover a vulnerability, please report privately to the maintainer instead of opening a public issue.

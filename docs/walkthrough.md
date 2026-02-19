@@ -1,64 +1,19 @@
-# Ignite Walkthrough
+# Walkthrough
 
-A complete guide to running code securely with Ignite - from AI agent sandboxing to isolated microservices.
+This walkthrough builds a realistic service, runs preflight checks, executes it in audit mode, and exposes it through the HTTP API.
 
-## Table of Contents
-
-1. [Understanding Ignite](#understanding-ignite)
-2. [Building a Data Processing Service](#building-a-data-processing-service)
-3. [Configuration Deep Dive](#configuration-deep-dive)
-4. [Working with Runtimes](#working-with-runtimes)
-5. [Preflight Safety Analysis](#preflight-safety-analysis)
-6. [HTTP API Server](#http-api-server)
-7. [Production Deployment](#production-deployment)
-
----
-
-## Understanding Ignite
-
-Ignite runs your code in isolated Docker containers. This provides:
-
-- **Isolation** - Each execution is sandboxed
-- **Reproducibility** - Same environment every time
-- **Safety** - Preflight checks catch issues before execution
-- **Portability** - Works anywhere Docker runs
-
-### Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        Ignite CLI                            │
-├─────────────────────────────────────────────────────────────┤
-│  Service Loader  │  Preflight Engine  │  Execution Engine   │
-├─────────────────────────────────────────────────────────────┤
-│                      Docker Runtime                          │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
-│  │  Bun 1.3     │  │  Node 20     │  │  Custom      │       │
-│  │  Runtime     │  │  Runtime     │  │  Runtime     │       │
-│  └──────────────┘  └──────────────┘  └──────────────┘       │
-└─────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Building a Data Processing Service
-
-Let's build a real service that processes JSON data and returns results.
-
-### Step 1: Initialize the Service
+## 1) Create Service
 
 ```bash
 ignite init data-processor
 cd data-processor
 ```
 
-### Step 2: Write the Code
+## 2) Implement Logic
 
 Edit `index.ts`:
 
-```typescript
-// index.ts - Data processing service
-
+```ts
 interface Input {
   data: number[];
   operation: 'sum' | 'average' | 'max' | 'min';
@@ -66,20 +21,18 @@ interface Input {
 
 interface Output {
   result: number;
-  operation: string;
+  operation: Input['operation'];
   count: number;
   timestamp: string;
 }
 
-// Parse input from environment
 const input: Input = JSON.parse(
-  process.env.IGNITE_INPUT || '{"data": [], "operation": "sum"}'
+  process.env.IGNITE_INPUT || '{"data":[],"operation":"sum"}'
 );
 
-// Process data
-function processData(data: number[], operation: string): number {
+function calculate(data: number[], operation: Input['operation']): number {
   if (data.length === 0) return 0;
-  
+
   switch (operation) {
     case 'sum':
       return data.reduce((a, b) => a + b, 0);
@@ -89,309 +42,105 @@ function processData(data: number[], operation: string): number {
       return Math.max(...data);
     case 'min':
       return Math.min(...data);
-    default:
-      throw new Error(`Unknown operation: ${operation}`);
   }
 }
 
-// Execute
-const result = processData(input.data, input.operation);
-
-// Output structured response
 const output: Output = {
-  result,
+  result: calculate(input.data, input.operation),
   operation: input.operation,
   count: input.data.length,
-  timestamp: new Date().toISOString()
+  timestamp: new Date().toISOString(),
 };
 
 console.log(JSON.stringify(output));
 ```
 
-### Step 3: Configure the Service
+## 3) Configure Service
 
 Edit `service.yaml`:
 
 ```yaml
 service:
   name: data-processor
-  runtime: bun
+  runtime: bun@1.3
   entry: index.ts
-  memoryMb: 64
-  timeoutMs: 5000
-```
-
-### Step 4: Run It
-
-```bash
-# Sum operation
-ignite run . --input '{"data": [1, 2, 3, 4, 5], "operation": "sum"}'
-# Output: {"result":15,"operation":"sum","count":5,"timestamp":"..."}
-
-# Average operation
-ignite run . --input '{"data": [10, 20, 30], "operation": "average"}'
-# Output: {"result":20,"operation":"average","count":3,"timestamp":"..."}
-```
-
----
-
-## Configuration Deep Dive
-
-### service.yaml Structure
-
-```yaml
-service:
-  # Required
-  name: my-service           # Service identifier
-  runtime: bun               # bun, node, deno, quickjs (optional version with @)
-  entry: index.ts            # Entry file
-  
-  # Resource Limits
-  memoryMb: 128              # Memory limit in MB (default: 128)
-  timeoutMs: 30000           # Timeout in ms (default: 30000)
-  
-  # Environment
+  memoryMb: 128
+  cpuLimit: 1
+  timeoutMs: 10000
   env:
-    API_KEY: "${API_KEY}"    # From environment
-    DEBUG: "true"            # Static value
-  
-  # Dependencies (optional, auto-detected)
-  dependencies:
-    - lodash
-    - axios
+    NODE_ENV: production
 ```
 
-### Environment Variables
-
-Ignite passes input via `IGNITE_INPUT` environment variable:
-
-```typescript
-const input = JSON.parse(process.env.IGNITE_INPUT || '{}');
-```
-
-Your custom environment variables are also available:
-
-```typescript
-const apiKey = process.env.API_KEY;
-```
-
----
-
-## Working with Runtimes
-
-### Bun Runtime (Default)
-
-Best for:
-- TypeScript projects
-- Fast cold starts
-- Modern ESM modules
-
-```yaml
-service:
-  runtime: bun
-  entry: index.ts
-```
-
-### Runtime
-
-Ignite supports Bun, Node, Deno, and QuickJS runtimes. Bun is the default and recommended option.
-
-**Security considerations:**
-- Additional runtimes increase the attack surface and dependency complexity.
-- Use non-Bun runtimes only when required by your code or dependencies.
-- Audit dependencies and keep runtime versions pinned (e.g., `node@20`, `deno@2.0`) to reduce drift.
-
-### Using Dependencies
-
-Add dependencies to `package.json`:
-
-```json
-{
-  "dependencies": {
-    "lodash": "^4.17.21",
-    "axios": "^1.6.0"
-  }
-}
-```
-
-Then use them:
-
-```typescript
-import _ from 'lodash';
-import axios from 'axios';
-
-const data = [1, 2, 3, 4, 5];
-console.log(_.sum(data));
-```
-
----
-
-## Preflight Safety Analysis
-
-Preflight checks run automatically before execution. You can also run them manually:
+## 4) Run Preflight
 
 ```bash
 ignite preflight .
 ```
 
-### What Gets Checked
+If preflight fails, update config before execution.
 
-| Check | Description | Severity |
-|-------|-------------|----------|
-| Memory | Memory vs dependency requirements | Warning/Error |
-| Timeout | Reasonable timeout configuration | Warning |
-| Image Size | Docker image size estimation | Info |
-| Dependencies | Dependency count and security | Warning |
-
-### Example Output
-
-```
-[preflight] Analyzing service: data-processor
-
-✓ Memory Check
-  Allocated: 64MB
-  Estimated: 32MB
-  Status: OK
-
-✓ Timeout Check
-  Configured: 5000ms
-  Status: OK
-
-✓ Image Size Check
-  Base: 100MB
-  Total: ~105MB
-  Status: OK
-
-✓ Dependency Check
-  Count: 0
-  Status: OK
-
-[preflight] All checks passed
-```
-
-### Skipping Preflight
-
-For faster iteration during development:
+## 5) Execute
 
 ```bash
-ignite run . --skip-preflight
+ignite run . --input '{"data":[1,2,3,4],"operation":"sum"}'
 ```
 
-> **Warning**: Only skip in development. Always run preflight in production.
+Expected output includes the service JSON payload and execution report.
 
----
-
-## HTTP API Server
-
-Serve multiple services via HTTP:
+## 6) Execute With Audit
 
 ```bash
-ignite serve --services ./services --port 3000
+ignite run . --audit --input '{"data":[10,20,30],"operation":"average"}'
 ```
 
-### Endpoints
+Use this mode for untrusted code paths.
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/health` | Health check |
-| GET | `/services` | List all services |
-| GET | `/services/:name` | Get service info |
-| GET | `/services/:name/preflight` | Run preflight |
-| POST | `/services/:name/execute` | Execute service |
+## 7) Generate Report
 
-### Executing via HTTP
+```bash
+ignite report . --json
+```
+
+Or save to file:
+
+```bash
+ignite report . --json --output report.json
+```
+
+## 8) Environment Locking
+
+Create manifest:
+
+```bash
+ignite lock .
+```
+
+Check for drift:
+
+```bash
+ignite lock . --check
+```
+
+## 9) Expose Service via HTTP
+
+Run server from parent directory containing services:
+
+```bash
+cd ..
+ignite serve --services . --port 3000
+```
+
+Call execute endpoint:
 
 ```bash
 curl -X POST http://localhost:3000/services/data-processor/execute \
-  -H "Content-Type: application/json" \
-  -d '{"input": {"data": [1,2,3], "operation": "sum"}}'
+  -H 'Content-Type: application/json' \
+  -d '{"input":{"data":[5,10,15],"operation":"max"},"audit":true}'
 ```
 
-Response:
+## 10) Operational Recommendations
 
-```json
-{
-  "success": true,
-  "output": "{\"result\":6,\"operation\":\"sum\",\"count\":3,\"timestamp\":\"...\"}",
-  "metrics": {
-    "executionTimeMs": 1234,
-    "memoryUsedMb": 32
-  }
-}
-```
-
----
-
-## Production Deployment
-
-### Option 1: Binary Installation
-
-Download the pre-built binary for your platform:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/dev-dami/ignite/master/install.sh | bash
-```
-
-### Option 2: Docker Compose
-
-```yaml
-# docker-compose.yml
-version: '3.8'
-services:
-  ignite:
-    image: ghcr.io/dev-dami/ignite:latest
-    command: serve --services /services --port 3000
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./services:/services
-      - /var/run/docker.sock:/var/run/docker.sock
-```
-
-### Option 3: Kubernetes
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: ignite
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: ignite
-  template:
-    metadata:
-      labels:
-        app: ignite
-    spec:
-      containers:
-      - name: ignite
-        image: ghcr.io/dev-dami/ignite:latest
-        command: ["ignite", "serve", "--port", "3000"]
-        ports:
-        - containerPort: 3000
-        volumeMounts:
-        - name: docker-sock
-          mountPath: /var/run/docker.sock
-      volumes:
-      - name: docker-sock
-        hostPath:
-          path: /var/run/docker.sock
-```
-
-### Best Practices
-
-1. **Always run preflight in production** - Don't skip safety checks
-2. **Set appropriate resource limits** - Memory and timeout
-3. **Monitor execution metrics** - Track execution time and memory
-4. **Use environment variables for secrets** - Never hardcode
-5. **Keep services small and focused** - Single responsibility
-
----
-
-## Next Steps
-
-- **[API Reference](./api.md)** - Complete CLI and HTTP API documentation
-- **[Architecture](./architecture.md)** - Deep dive into system design
-- **[Preflight](./preflight.md)** - Detailed preflight analysis docs
+- Keep runtime versions pinned in `service.yaml`.
+- Prefer `--audit` for user-provided or AI-generated code.
+- Set conservative `memoryMb` and `timeoutMs` for each service.
+- Keep services single-purpose; split complex workflows.
