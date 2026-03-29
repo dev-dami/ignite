@@ -1,6 +1,6 @@
 {
   "name": "ignite",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "private": true,
   "description": "Secure JS/TS code execution in Docker with sandboxing for AI agents, untrusted code, and microservices",
   "workspaces": [

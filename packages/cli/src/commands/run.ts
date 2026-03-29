@@ -10,6 +10,7 @@ interface RunOptions {
   audit?: boolean;
   runtime?: string;
   auditOutput?: string;
+  stream?: boolean;
 }
 
 export async function runCommand(servicePath: string, options: RunOptions): Promise<void> {
@@ -52,7 +53,14 @@ export async function runCommand(servicePath: string, options: RunOptions): Prom
       ? (await loadPolicyFile(service.servicePath)) ?? DEFAULT_POLICY
       : undefined;
 
-    const metrics = await executeService(service, { input, skipBuild: true, audit: options.audit, policy });
+    const metrics = await executeService(service, {
+      input,
+      skipBuild: true,
+      audit: options.audit,
+      policy,
+      onStdout: options.stream ? (chunk) => process.stdout.write(chunk) : undefined,
+      onStderr: options.stream ? (chunk) => process.stderr.write(chunk) : undefined,
+    });
 
     const report = createReport(preflightResult, metrics);
     const audit = options.audit && policy

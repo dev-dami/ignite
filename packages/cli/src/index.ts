@@ -13,7 +13,7 @@ const program = new Command();
 program
   .name('ignite')
   .description('Secure sandbox for AI-generated code, untrusted scripts, and JS/TS execution')
-  .version('0.8.0');
+  .version('0.9.0');
 
 program
   .command('init <name>')
@@ -31,6 +31,7 @@ program
   .option('--json', 'Output results as JSON')
   .option('--audit', 'Run with security audit (blocks network, read-only filesystem)')
   .option('--audit-output <file>', 'Write security audit to a JSON file')
+  .option('--stream', 'Stream container output to the terminal in real time')
   .action(runCommand);
 
 program

@@ -18,4 +18,25 @@ describe('buildDockerRunArgs', () => {
     expect(args).toContain('--name');
     expect(args).toContain('ignite-test-container');
   });
+
+  it('produces the same args regardless of whether streaming callbacks are provided', () => {
+    const baseOptions = {
+      imageName: 'ignite-test',
+      containerName: 'ignite-test-container',
+      memoryLimitMb: 64,
+      timeoutMs: 1000,
+      workDir: '/app',
+      env: {},
+      volumes: [],
+    };
+
+    const argsWithoutStreaming = buildDockerRunArgs(baseOptions);
+    const argsWithStreaming = buildDockerRunArgs({
+      ...baseOptions,
+      onStdout: () => {},
+      onStderr: () => {},
+    });
+
+    expect(argsWithStreaming).toEqual(argsWithoutStreaming);
+  });
 });

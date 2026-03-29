@@ -92,7 +92,7 @@ export async function dockerRun(options: DockerRunOptions): Promise<DockerRunRes
   logger.debug(`Running: docker ${args.join(' ')}`);
 
   const startTime = Date.now();
-  const result = await execDockerWithTimeout(args, options.timeoutMs);
+  const result = await execDockerWithTimeout(args, options.timeoutMs, options.onStdout, options.onStderr);
   const durationMs = Date.now() - startTime;
 
   const inspectResult = await inspectExitedContainer(options.containerName).catch(() => null);
@@ -188,7 +188,7 @@ function execDocker(args: string[]): Promise<ExecResult> {
   });
 }
 
-function execDockerWithTimeout(args: string[], timeoutMs: number): Promise<ExecResult> {
+function execDockerWithTimeout(args: string[], timeoutMs: number, onStdout?: (chunk: string) => void, onStderr?: (chunk: string) => void): Promise<ExecResult> {
   return new Promise((resolve) => {
     const proc = spawn('docker', args, { stdio: ['ignore', 'pipe', 'pipe'] });
 
@@ -202,11 +202,15 @@ function execDockerWithTimeout(args: string[], timeoutMs: number): Promise<ExecR
     }, timeoutMs);
 
     proc.stdout.on('data', (data: Buffer) => {
-      stdout += data.toString();
+      const chunk = data.toString();
+      stdout += chunk;
+      onStdout?.(chunk);
     });
 
     proc.stderr.on('data', (data: Buffer) => {
-      stderr += data.toString();
+      const chunk = data.toString();
+      stderr += chunk;
+      onStderr?.(chunk);
     });
 
     proc.on('close', (code) => {

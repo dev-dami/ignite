@@ -17,6 +17,10 @@ export interface ExecuteOptions {
   skipBuild?: boolean;
   audit?: boolean;
   policy?: SecurityPolicy;
+  /** Called with each stdout chunk as it arrives from the container in real time */
+  onStdout?: (chunk: string) => void;
+  /** Called with each stderr chunk as it arrives from the container in real time */
+  onStderr?: (chunk: string) => void;
 }
 
 interface ExecutionState {
@@ -76,6 +80,8 @@ export async function executeService(
       NODE_ENV: 'production',
     },
     security: options.audit ? securityOptions : undefined,
+    onStdout: options.onStdout,
+    onStderr: options.onStderr,
   });
 
   const metrics = parseMetrics(runResult, isColdStart);
