@@ -1,11 +1,14 @@
 {
   "name": "@ignite/cli",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "type": "module",
   "bin": {
     "ignite": "./dist/index.js"
   },
   "main": "./dist/index.js",
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "bun run tsc",
     "dev": "bun run tsc --watch",

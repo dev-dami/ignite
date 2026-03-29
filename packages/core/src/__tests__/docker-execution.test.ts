@@ -65,6 +65,21 @@ describe('Docker Execution', () => {
         expect(metrics.stdout).toContain('Ignite');
       }, 120000);
 
+      it('streams stdout in real time when onStdout callback is provided', async () => {
+        if (!dockerAvailable) return;
+
+        const service = await loadService(HELLO_BUN_PATH);
+        const chunks: string[] = [];
+
+        const metrics = await executeService(service, {
+          onStdout: (chunk) => chunks.push(chunk),
+        });
+
+        expect(metrics.exitCode).toBe(0);
+        expect(chunks.length).toBeGreaterThan(0);
+        expect(chunks.join('')).toBe(metrics.stdout);
+      }, 120000);
+
       it('returns correct cold start detection', async () => {
         if (!dockerAvailable) return;
 

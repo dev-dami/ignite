@@ -16,6 +16,10 @@ export interface DockerRunOptions {
   env: Record<string, string>;
   command?: string[];
   security?: SecurityOptions;
+  /** Called with each stdout chunk as it arrives from the container */
+  onStdout?: (chunk: string) => void;
+  /** Called with each stderr chunk as it arrives from the container */
+  onStderr?: (chunk: string) => void;
 }
 
 export interface SecurityOptions {
