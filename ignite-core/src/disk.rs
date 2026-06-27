@@ -1,7 +1,7 @@
+use ignite_shared::error::{IgniteError, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use ignite_shared::error::{IgniteError, Result};
 
 fn get_dir_size<P: AsRef<Path>>(path: P) -> Result<u64> {
     let mut size = 0;
@@ -19,12 +19,10 @@ fn get_dir_size<P: AsRef<Path>>(path: P) -> Result<u64> {
 
 fn find_mke2fs() -> Option<PathBuf> {
     // 1. Try checking standard PATH first
-    if let Ok(output) = Command::new("which").arg("mke2fs").output() {
-        if output.status.success() {
-            let path_str = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            if !path_str.is_empty() {
-                return Some(PathBuf::from(path_str));
-            }
+    if let Some(output) = Command::new("which").arg("mke2fs").output().ok().filter(|o| o.status.success()) {
+        let path_str = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if !path_str.is_empty() {
+            return Some(PathBuf::from(path_str));
         }
     }
 
@@ -34,7 +32,7 @@ fn find_mke2fs() -> Option<PathBuf> {
         "/usr/sbin/mke2fs",
         "/usr/local/bin/mke2fs",
         "/opt/homebrew/opt/e2fsprogs/sbin/mke2fs", // Homebrew on Apple Silicon macOS
-        "/usr/local/opt/e2fsprogs/sbin/mke2fs",     // Homebrew on Intel macOS
+        "/usr/local/opt/e2fsprogs/sbin/mke2fs",    // Homebrew on Intel macOS
     ];
 
     for &loc in &locations {

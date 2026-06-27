@@ -1,3 +1,4 @@
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::ffi::CString;
 use std::fs::OpenOptions;
@@ -7,7 +8,6 @@ use std::os::unix::io::FromRawFd;
 use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::thread;
-use serde::Deserialize;
 
 const VSOCK_PORT: u32 = 1052;
 const VSOCK_CID_HOST: u32 = 2;
@@ -85,7 +85,9 @@ fn connect_vsock(port: u32) -> Result<TcpStream, std::io::Error> {
     };
 
     if res != 0 {
-        unsafe { libc::close(fd); }
+        unsafe {
+            libc::close(fd);
+        }
         return Err(std::io::Error::last_os_error());
     }
 
@@ -94,14 +96,23 @@ fn connect_vsock(port: u32) -> Result<TcpStream, std::io::Error> {
     Ok(stream)
 }
 
-fn connect_vsock_retry(port: u32, retries: u32, delay_ms: u64) -> Result<TcpStream, std::io::Error> {
+fn connect_vsock_retry(
+    port: u32,
+    retries: u32,
+    delay_ms: u64,
+) -> Result<TcpStream, std::io::Error> {
     let mut last_err = std::io::Error::other("Failed to connect to host over VSOCK");
     for i in 0..retries {
         match connect_vsock(port) {
             Ok(stream) => return Ok(stream),
             Err(e) => {
                 last_err = e;
-                log_info(&format!("VSOCK connection attempt {}/{} failed, retrying in {}ms...", i + 1, retries, delay_ms));
+                log_info(&format!(
+                    "VSOCK connection attempt {}/{} failed, retrying in {}ms...",
+                    i + 1,
+                    retries,
+                    delay_ms
+                ));
                 thread::sleep(std::time::Duration::from_millis(delay_ms));
             }
         }
@@ -129,7 +140,8 @@ fn main() {
 
     // 2. Connect to Host over VSOCK with retry (default port 1052)
     log_info("Establishing connection to host...");
-    let mut stream = match connect_vsock_retry(VSOCK_PORT, VSOCK_RETRY_COUNT, VSOCK_RETRY_DELAY_MS) {
+    let mut stream = match connect_vsock_retry(VSOCK_PORT, VSOCK_RETRY_COUNT, VSOCK_RETRY_DELAY_MS)
+    {
         Ok(s) => s,
         Err(e) => {
             log_error(&format!("Failed to connect to host over VSOCK: {}", e));
@@ -255,7 +267,10 @@ fn main() {
             1
         }
     };
-    log_info(&format!("Execution finished. Child exit code: {}", exit_code));
+    log_info(&format!(
+        "Execution finished. Child exit code: {}",
+        exit_code
+    ));
 
     // Send exit status frame
     {

@@ -12,137 +12,73 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-test:
-    name: Build & Test
+  check-and-test:
+    name: Check, Lint & Test
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    permissions:
-      contents: read
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-      
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-      
-      - name: Build packages
-        run: bun run build
 
-      - name: Lint
-        run: bun run lint
-      
-      - name: Type check
-        run: bun run typecheck
-      
-      - name: Run unit tests
-        run: bun run test:unit
-
-      - name: Check Docker availability
-        id: docker-check
+      - name: Install system dependencies
         run: |
-          if docker version >/dev/null 2>&1; then
-            echo "available=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "available=false" >> "$GITHUB_OUTPUT"
-          fi
+          sudo apt-get update
+          sudo apt-get install -y e2fsprogs
 
-      - name: Run full test suite (Docker)
-        if: steps.docker-check.outputs.available == 'true'
-        run: bun run test
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+
+      - name: Verify Formatting
+        run: cargo fmt --all -- --check
+
+      - name: Cargo Check
+        run: cargo check --all-targets
+
+      - name: Cargo Clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Run Tests
+        run: cargo test --all
 
   release:
-    name: Build & Release
+    name: Build & Release Binaries
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    needs: build-and-test
+    timeout-minutes: 20
+    needs: check-and-test
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-      
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
 
-      - name: Verify tag matches package version
+      - name: Install system dependencies
         run: |
-          TAG_VERSION="${GITHUB_REF_NAME#v}"
-          PKG_VERSION="$(node -p "require('./package.json').version")"
-          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
-            echo "Tag v$TAG_VERSION does not match package.json version $PKG_VERSION"
-            exit 1
-          fi
-      
-      - name: Build packages
-        run: bun run build
-      
-      - name: Build binaries
-        run: bun run scripts/build-binaries.ts
-      
-      - name: Create Release
+          sudo apt-get update
+          sudo apt-get install -y e2fsprogs
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Build Release CLI
+        run: cargo build --release --bin ignite-cli
+
+      - name: Package Binary
+        run: |
+          mkdir -p dist
+          mv target/release/ignite-cli target/release/ignite
+          tar -czf dist/ignite-linux-amd64.tar.gz -C target/release ignite
+          sha256sum dist/ignite-linux-amd64.tar.gz > dist/SHA256SUMS
+
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/*.tar.gz
+            dist/ignite-linux-amd64.tar.gz
             dist/SHA256SUMS
           generate_release_notes: true
           draft: false
           prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
-
-  publish-npm:
-    name: Publish to npm
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    needs: release
-    if: startsWith(github.ref, 'refs/tags/v')
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          registry-url: 'https://registry.npmjs.org'
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Build packages
-        run: bun run build
-
-      - name: Publish @ignite/shared
-        run: npm publish
-        working-directory: packages/shared
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish @ignite/core
-        run: npm publish
-        working-directory: packages/core
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish @ignite/http
-        run: npm publish
-        working-directory: packages/http
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish @ignite/cli
-        run: npm publish
-        working-directory: packages/cli
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

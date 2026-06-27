@@ -1,84 +1,66 @@
 # Architecture
 
-Ignite is a Bun-first monorepo for secure execution of JS/TS services inside Docker.
+Ignite is a Rust cargo workspace for secure, hardware-virtualized execution of JS/TS services inside microVMs.
 
-## Packages
-
-```text
-packages/
-├── cli          # command parsing and user-facing workflows
-├── core         # service loading, runtime, preflight, execution, reporting
-├── http         # Elysia server wrapping core execution
-├── shared       # shared types, errors, logging, helpers
-└── runtime-bun  # runtime Dockerfile assets
-```
-
-## Execution Pipeline
+## Cargo Workspace Packages
 
 ```text
-service.yaml
-  -> loadService()
-  -> runtime resolution (runtime registry)
-  -> build image (if needed)
-  -> runPreflight()
-  -> executeService()
-  -> report + optional security audit parsing
+ignite/
+├── Cargo.toml
+├── ignite-shared/          # Shared type models (ServiceConfig, metrics), error maps, and validators
+├── ignite-core/            # Hypervisor engine selector, disk formatter, and platform hypervisors
+├── ignite-cli/             # Clap-based command line interface binary
+├── ignite-http/            # Axum-based HTTP REST API server
+└── ignite-guest-agent/     # Static guest agent init system (target: x86_64-unknown-linux-musl)
 ```
 
-## Runtime Registry
+## Storage Device Mapping
 
-Runtime configuration is provided by built-in and optional custom runtime plugins.
+To minimize vulnerabilities in the guest VM, the root filesystem is built without a shell, libraries, or network utilities. The host maps the VM's storage dynamically:
 
-Built-ins:
+```text
+                ┌──────────────────────┐
+                │      Guest VM        │
+                │                      │
+/dev/vda ──────>│ / (Rootfs)           │  <- Static guest agent init binary only
+                │                      │
+/dev/vdb ──────>│ /app (Service)       │  <- Service code, files, package.json (Read-Only)
+                │                      │
+/dev/vdc ──────>│ /runtime (Engine)    │  <- Language runtime executable e.g. bun (Read-Only)
+                └──────────────────────┘
+```
 
-- `bun`
-- `node`
-- `deno`
-- `quickjs`
+1. **`/dev/vda` (Root filesystem)**: Contains only the statically compiled `/sbin/init` (the `ignite-guest-agent` binary).
+2. **`/dev/vdb` (Service filesystem)**: Holds service source code files, formatted dynamically on-the-fly by the host using `mke2fs` without loopback privileges. Mounted read-only at `/app`.
+3. **`/dev/vdc` (Runtime engine)**: Holds the selected language runtime (Node, Deno, Bun, or QuickJS) from the host's runtime library folder. Mounted read-only at `/runtime`.
 
-Runtime specs can be version-qualified (`name@version`) and are validated against supported versions.
+## Lifecycle Execution Flow
 
-## Container Execution Model
+```text
+ignite-cli/ignite-http
+  -> Loads service.yaml
+  -> Runs preflight checks (dependency counts, RAM allocations)
+  -> Calls mke2fs to format service.ext4 and runtime.ext4 in user-space
+  -> Binds host VSOCK listener on Unix Socket (/tmp/ignite-vsock-VMID_1052)
+  -> Spawns hypervisor process (Firecracker or Apple VZ)
+  -> Hypervisor loads kernel (vmlinux), boots guest VM
+  -> Guest Agent (init) mounts /dev/vdb to /app and /dev/vdc to /runtime
+  -> Guest Agent connects back to host over VSOCK channel (port 1052)
+  -> Host transmits JSON payload (environment, execution script)
+  -> Guest Agent executes runtime command inside microVM sandbox
+  -> Guest Agent streams stdout/stderr multiplexed frames over VSOCK
+  -> Guest Agent captures exit code and triggers reboot(POWER_OFF)
+  -> Host tears down hypervisor and deletes temporary UDS socket files
+```
 
-Core container controls include:
+## VSOCK Multiplexed Communication
 
-- memory and CPU limits
-- timeout termination handling
-- controlled mounts for service directory
-- environment variable injection
+The guest-host communication uses virtual sockets (VSOCK). It sends length-prefixed multiplexed frames:
 
-When audit mode is enabled, additional hardening options are applied (for example network disablement and read-only root filesystem).
+* **Header (5 bytes)**: `[1-byte stream type] [4-byte big-endian payload length]`
+  * `type = 1`: stdout
+  * `type = 2`: stderr
+  * `type = 3`: exit code (captured from runtime child execution)
+* **Body**: Raw UTF-8 bytes payload.
 
-## HTTP Layer
-
-The HTTP package provides:
-
-- health endpoint
-- service listing
-- preflight endpoint
-- execute endpoint
-- optional bearer auth
-- in-memory rate limiting
-
-HTTP routes delegate execution and validation to `@ignite/core`.
-
-## Data Contracts
-
-Shared types in `@ignite/shared` define:
-
-- `ServiceConfig`
-- `PreflightResult`
-- `ExecutionMetrics`
-- environment manifest (`ignite.lock`) types
-
-These contracts are consumed consistently by CLI and HTTP packages.
-
-## Security Boundaries
-
-Ignite security posture depends on:
-
-- host OS and kernel behavior
-- Docker daemon isolation guarantees
-- runtime image integrity
-
-For full threat assumptions and non-goals, see [threat-model.md](./threat-model.md).
+This eliminates guest networking interfaces entirely, reducing the attack surface.

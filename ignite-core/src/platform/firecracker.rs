@@ -6,9 +6,9 @@ use std::process::{Child, Command};
 use std::thread;
 use std::time::{Duration, Instant};
 
+use crate::orchestrator::{MicroVmOrchestrator, VmConfig};
 use ignite_shared::error::{IgniteError, Result};
 use ignite_shared::types::ExecutionMetrics;
-use crate::orchestrator::{MicroVmOrchestrator, VmConfig};
 
 #[derive(Debug)]
 pub struct FirecrackerOrchestrator {
@@ -61,7 +61,10 @@ fn send_put_uds(socket_path: &Path, endpoint: &str, body: &str) -> Result<()> {
 
     if !response.contains("HTTP/1.1 2") {
         return Err(IgniteError::Runtime {
-            message: format!("Firecracker API (PUT {}) returned error: {}", endpoint, response),
+            message: format!(
+                "Firecracker API (PUT {}) returned error: {}",
+                endpoint, response
+            ),
             source: None,
         });
     }
@@ -70,7 +73,8 @@ fn send_put_uds(socket_path: &Path, endpoint: &str, body: &str) -> Result<()> {
 
 impl MicroVmOrchestrator for FirecrackerOrchestrator {
     fn configure(&mut self, config: VmConfig) -> Result<()> {
-        self.api_socket_path = PathBuf::from(format!("{}{}.sock", API_SOCKET_PREFIX, config.service_name));
+        self.api_socket_path =
+            PathBuf::from(format!("{}{}.sock", API_SOCKET_PREFIX, config.service_name));
         self.config = Some(config);
         Ok(())
     }
@@ -84,8 +88,12 @@ impl MicroVmOrchestrator for FirecrackerOrchestrator {
         // 1. Clean up any stale sockets
         let _ = fs::remove_file(&self.api_socket_path);
         let _ = fs::remove_file(&config.vsock_uds_path);
-        
-        let vsock_listener_path = format!("{}{}", config.vsock_uds_path.to_string_lossy(), VSOCK_PORT_SUFFIX);
+
+        let vsock_listener_path = format!(
+            "{}{}",
+            config.vsock_uds_path.to_string_lossy(),
+            VSOCK_PORT_SUFFIX
+        );
         let _ = fs::remove_file(&vsock_listener_path);
 
         // 2. Spawn firecracker process
@@ -94,7 +102,10 @@ impl MicroVmOrchestrator for FirecrackerOrchestrator {
             .arg(&self.api_socket_path)
             .spawn()
             .map_err(|e| IgniteError::Runtime {
-                message: format!("Failed to launch firecracker daemon. Ensure it is installed: {}", e),
+                message: format!(
+                    "Failed to launch firecracker daemon. Ensure it is installed: {}",
+                    e
+                ),
                 source: Some(Box::new(e)),
             })?;
         self.child_process = Some(child);
@@ -102,10 +113,8 @@ impl MicroVmOrchestrator for FirecrackerOrchestrator {
         // 3. Wait for UDS API to become ready (timeout 500ms)
         let start = Instant::now();
         let api_ready = loop {
-            if self.api_socket_path.exists() {
-                if UnixStream::connect(&self.api_socket_path).is_ok() {
-                    break true;
-                }
+            if self.api_socket_path.exists() && UnixStream::connect(&self.api_socket_path).is_ok() {
+                break true;
             }
             if start.elapsed() > Duration::from_millis(API_READY_TIMEOUT_MS) {
                 break false;
@@ -128,7 +137,8 @@ impl MicroVmOrchestrator for FirecrackerOrchestrator {
         let machine_body = serde_json::json!({
             "vcpu_count": config.vcpu_count,
             "mem_size_mib": config.memory_mb,
-        }).to_string();
+        })
+        .to_string();
         send_put_uds(&self.api_socket_path, "/machine-config", &machine_body)?;
 
         // Boot Source & Kernel config
@@ -144,7 +154,8 @@ impl MicroVmOrchestrator for FirecrackerOrchestrator {
             "path_on_host": config.rootfs_path,
             "is_root_device": true,
             "is_read_only": true,
-        }).to_string();
+        })
+        .to_string();
         send_put_uds(&self.api_socket_path, "/drives/rootfs", &rootfs_body)?;
 
         // Storage attachment - Service files (/dev/vdb)
@@ -153,7 +164,8 @@ impl MicroVmOrchestrator for FirecrackerOrchestrator {
             "path_on_host": config.service_disk_path,
             "is_root_device": false,
             "is_read_only": true,
-        }).to_string();
+        })
+        .to_string();
         send_put_uds(&self.api_socket_path, "/drives/service", &service_body)?;
 
         // Storage attachment - Language runtime binaries (/dev/vdc)
@@ -162,7 +174,8 @@ impl MicroVmOrchestrator for FirecrackerOrchestrator {
             "path_on_host": config.runtime_disk_path,
             "is_root_device": false,
             "is_read_only": true,
-        }).to_string();
+        })
+        .to_string();
         send_put_uds(&self.api_socket_path, "/drives/runtime", &runtime_body)?;
 
         // VSOCK Device setup
@@ -170,13 +183,15 @@ impl MicroVmOrchestrator for FirecrackerOrchestrator {
             "vsock_id": "vsock0",
             "guest_cid": GUEST_CID,
             "uds_path": config.vsock_uds_path,
-        }).to_string();
+        })
+        .to_string();
         send_put_uds(&self.api_socket_path, "/vsock", &vsock_body)?;
 
         // Start VM instance
         let action_body = serde_json::json!({
             "action_type": "InstanceStart",
-        }).to_string();
+        })
+        .to_string();
         send_put_uds(&self.api_socket_path, "/actions", &action_body)?;
 
         Ok(())
@@ -192,7 +207,11 @@ impl MicroVmOrchestrator for FirecrackerOrchestrator {
             source: None,
         })?;
 
-        let vsock_listener_path = format!("{}{}", config.vsock_uds_path.to_string_lossy(), VSOCK_PORT_SUFFIX);
+        let vsock_listener_path = format!(
+            "{}{}",
+            config.vsock_uds_path.to_string_lossy(),
+            VSOCK_PORT_SUFFIX
+        );
 
         // 1. Host VSOCK listener for guest-initiated connections
         let listener = UnixListener::bind(&vsock_listener_path)?;
@@ -209,7 +228,8 @@ impl MicroVmOrchestrator for FirecrackerOrchestrator {
                     if start_time.elapsed().as_millis() > (config.timeout_ms as u128) {
                         self.cleanup_vm_processes();
                         return Err(IgniteError::Execution {
-                            message: "Timeout waiting for guest agent to connect over VSOCK".to_string(),
+                            message: "Timeout waiting for guest agent to connect over VSOCK"
+                                .to_string(),
                             source: None,
                         });
                     }
@@ -259,23 +279,24 @@ impl MicroVmOrchestrator for FirecrackerOrchestrator {
 
             let chunk = String::from_utf8_lossy(&data);
             match type_byte[0] {
-                1 => { // stdout
+                1 => {
+                    // stdout
                     stdout_accum.push_str(&chunk);
                     if let Some(ref cb) = on_stdout {
                         cb(&chunk);
                     }
                 }
-                2 => { // stderr
+                2 => {
+                    // stderr
                     stderr_accum.push_str(&chunk);
                     if let Some(ref cb) = on_stderr {
                         cb(&chunk);
                     }
                 }
-                3 => { // exit code
-                    if length >= 4 {
-                        if let Ok(arr) = data[..4].try_into() {
-                            exit_code = i32::from_be_bytes(arr);
-                        }
+                3 => {
+                    // exit code
+                    if let Some(arr) = data.get(..4).and_then(|slice| slice.try_into().ok()) {
+                        exit_code = i32::from_be_bytes(arr);
                     }
                     break;
                 }
@@ -308,7 +329,11 @@ impl FirecrackerOrchestrator {
         }
         let _ = fs::remove_file(&self.api_socket_path);
         if let Some(ref config) = self.config {
-            let vsock_listener_path = format!("{}{}", config.vsock_uds_path.to_string_lossy(), VSOCK_PORT_SUFFIX);
+            let vsock_listener_path = format!(
+                "{}{}",
+                config.vsock_uds_path.to_string_lossy(),
+                VSOCK_PORT_SUFFIX
+            );
             let _ = fs::remove_file(&config.vsock_uds_path);
             let _ = fs::remove_file(&vsock_listener_path);
         }

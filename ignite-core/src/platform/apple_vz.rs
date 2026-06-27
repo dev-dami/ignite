@@ -1,6 +1,6 @@
+use crate::orchestrator::{MicroVmOrchestrator, VmConfig};
 use ignite_shared::error::{IgniteError, Result};
 use ignite_shared::types::ExecutionMetrics;
-use crate::orchestrator::{MicroVmOrchestrator, VmConfig};
 
 pub struct AppleVzOrchestrator {
     config: Option<VmConfig>,

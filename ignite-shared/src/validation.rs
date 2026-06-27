@@ -4,9 +4,8 @@ use std::sync::OnceLock;
 static DOCKER_NAME_RE: OnceLock<Regex> = OnceLock::new();
 
 fn get_docker_name_regex() -> &'static Regex {
-    DOCKER_NAME_RE.get_or_init(|| {
-        Regex::new(r"^[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$|^[a-z0-9]$").unwrap()
-    })
+    DOCKER_NAME_RE
+        .get_or_init(|| Regex::new(r"^[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$|^[a-z0-9]$").unwrap())
 }
 
 #[derive(Debug)]
@@ -34,7 +33,9 @@ pub fn validate_service_name(name: &str) -> ValidationResult {
     if !re.is_match(name) {
         return ValidationResult {
             valid: false,
-            error: Some("Name must be lowercase alphanumeric with hyphens (1-63 chars)".to_string()),
+            error: Some(
+                "Name must be lowercase alphanumeric with hyphens (1-63 chars)".to_string(),
+            ),
         };
     }
 
@@ -64,4 +65,3 @@ mod tests {
         assert!(!is_valid_service_name("hello..world"));
     }
 }
-

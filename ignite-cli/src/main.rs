@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use ignite_core::execution::{execute_service, ExecuteOptions};
+use ignite_core::execution::{ExecuteOptions, execute_service};
 use ignite_core::report::{create_report, format_report_as_text};
 use ignite_core::runtime::{get_runtime_config, is_valid_runtime};
 use ignite_shared::error::{IgniteError, Result};
@@ -114,7 +114,9 @@ fn handle_init(name: String, path: Option<String>, runtime: String) -> Result<()
     let validation = validate_service_name(&name);
     if !validation.valid {
         return Err(IgniteError::Service {
-            message: validation.error.unwrap_or_else(|| "Invalid service name".to_string()),
+            message: validation
+                .error
+                .unwrap_or_else(|| "Invalid service name".to_string()),
             source: None,
         });
     }
@@ -159,9 +161,7 @@ fn handle_init(name: String, path: Option<String>, runtime: String) -> Result<()
         "const input = process.env.IGNITE_INPUT ? JSON.parse(process.env.IGNITE_INPUT) : {};\nconsole.log('Hello from JS Ignite! Input:', input);\n"
     };
 
-    let pkg_json = serde_json::to_string_pretty(&pkg_content)
-        .map_err(IgniteError::Json)?
-        + "\n";
+    let pkg_json = serde_json::to_string_pretty(&pkg_content).map_err(IgniteError::Json)? + "\n";
 
     let files = [
         ("service.yaml", yaml_content),
@@ -195,7 +195,7 @@ fn handle_init(name: String, path: Option<String>, runtime: String) -> Result<()
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
 fn handle_run(
     service: String,
     input: Option<String>,
@@ -260,8 +260,7 @@ fn handle_run(
     if json {
         println!(
             "{}",
-            serde_json::to_string_pretty(&report)
-                .map_err(IgniteError::Json)?
+            serde_json::to_string_pretty(&report).map_err(IgniteError::Json)?
         );
     } else {
         println!("{}", format_report_as_text(&report));
@@ -285,10 +284,7 @@ fn handle_preflight(service: String) -> Result<()> {
 
     let result = ignite_core::preflight::run_preflight(service_path, &config, None)?;
 
-    println!(
-        "Preflight Checks overall status: {}",
-        result.overall_status
-    );
+    println!("Preflight Checks overall status: {}", result.overall_status);
     for check in &result.checks {
         let icon = match check.status {
             PreflightStatus::Pass => "✓",
@@ -311,15 +307,18 @@ fn handle_preflight(service: String) -> Result<()> {
 async fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "info".into()),
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()),
         )
         .init();
 
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Init { name, path, runtime } => {
+        Commands::Init {
+            name,
+            path,
+            runtime,
+        } => {
             handle_init(name, path, runtime)?;
         }
         Commands::Run {
@@ -355,7 +354,11 @@ async fn main() -> Result<()> {
         Commands::Preflight { service } => {
             handle_preflight(service)?;
         }
-        Commands::Serve { port, host, services } => {
+        Commands::Serve {
+            port,
+            host,
+            services,
+        } => {
             let state = std::sync::Arc::new(ignite_http::server::ServerState {
                 services_path: PathBuf::from(services),
                 api_key: std::env::var("IGNITE_API_KEY").ok(),

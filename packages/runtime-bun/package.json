@@ -1,6 +1,0 @@
-{
-  "name": "@ignite/runtime-bun",
-  "version": "0.9.0",
-  "private": true,
-  "description": "Bun runtime adapter for Ignite"
-}

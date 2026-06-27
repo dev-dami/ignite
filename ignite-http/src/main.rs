@@ -2,14 +2,13 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use ignite_http::server::{create_router, RateLimiter, ServerState};
+use ignite_http::server::{RateLimiter, ServerState, create_router};
 
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "info".into()),
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()),
         )
         .init();
 
@@ -32,7 +31,9 @@ async fn main() {
         rate_limiter: RateLimiter::new(60, 60),
         kernel_path: std::env::var("IGNITE_KERNEL_PATH").ok().map(PathBuf::from),
         rootfs_path: std::env::var("IGNITE_ROOTFS_PATH").ok().map(PathBuf::from),
-        runtimes_root: std::env::var("IGNITE_RUNTIMES_ROOT").ok().map(PathBuf::from),
+        runtimes_root: std::env::var("IGNITE_RUNTIMES_ROOT")
+            .ok()
+            .map(PathBuf::from),
     });
 
     let app = create_router(state);

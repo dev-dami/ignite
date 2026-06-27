@@ -1,7 +1,7 @@
-use std::collections::HashMap;
-use std::path::PathBuf;
 use ignite_shared::error::Result;
 use ignite_shared::types::ExecutionMetrics;
+use std::collections::HashMap;
+use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
 pub struct VmConfig {
@@ -30,6 +30,7 @@ pub trait MicroVmOrchestrator {
     fn boot(&mut self) -> Result<()>;
 
     /// Block, stream child standard streams (via VSOCK), capture exit code, and cleanly tear down loopbacks
+    #[allow(clippy::type_complexity)]
     fn wait_and_teardown(
         &mut self,
         on_stdout: Option<Box<dyn Fn(&str) + Send>>,

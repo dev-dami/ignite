@@ -1,12 +1,12 @@
-use std::collections::HashMap;
-use std::fs;
-use std::path::{Path, PathBuf};
-use ignite_shared::error::{IgniteError, Result};
-use ignite_shared::types::{ExecutionMetrics, PreflightResult, PreflightStatus, ServiceConfig};
 use crate::disk::create_ext4_image;
 use crate::orchestrator::VmConfig;
 use crate::platform::get_orchestrator;
 use crate::preflight::run_preflight;
+use ignite_shared::error::{IgniteError, Result};
+use ignite_shared::types::{ExecutionMetrics, PreflightResult, PreflightStatus, ServiceConfig};
+use std::collections::HashMap;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone)]
 pub struct ExecuteOptions {
@@ -36,6 +36,7 @@ fn load_service_config(service_path: &Path) -> Result<ServiceConfig> {
     Ok(config)
 }
 
+#[allow(clippy::type_complexity)]
 pub fn execute_service(
     service_path: &Path,
     options: ExecuteOptions,
@@ -134,9 +135,10 @@ pub fn execute_service(
         service_disk_path,
         runtime_disk_path,
         memory_mb: options.memory_override.unwrap_or(config.service.memory_mb),
-        vcpu_count: options.cpu_override.map(|c| c as u8).unwrap_or(
-            config.service.cpu_limit.map(|c| c as u8).unwrap_or(1),
-        ),
+        vcpu_count: options
+            .cpu_override
+            .map(|c| c as u8)
+            .unwrap_or(config.service.cpu_limit.map(|c| c as u8).unwrap_or(1)),
         vsock_port,
         vsock_uds_path,
         env,
@@ -157,7 +159,10 @@ pub fn execute_service(
     // Parse memory metrics from stderr trace (mimics TS implementation)
     metrics.memory_usage_mb = parse_memory_from_stderr(&metrics.stderr);
     metrics.cold_start_time_ms = if metrics.cold_start {
-        Some(estimate_cold_start_time(&metrics.stderr, metrics.execution_time_ms))
+        Some(estimate_cold_start_time(
+            &metrics.stderr,
+            metrics.execution_time_ms,
+        ))
     } else {
         None
     };
@@ -167,12 +172,10 @@ pub fn execute_service(
 
 fn parse_memory_from_stderr(stderr: &str) -> f64 {
     for line in stderr.lines() {
-        if line.contains("IGNITE_MEMORY_MB:") {
-            if let Some(pos) = line.find("IGNITE_MEMORY_MB:") {
-                let val_str = &line[pos + "IGNITE_MEMORY_MB:".len()..];
-                if let Ok(val) = val_str.trim().parse::<f64>() {
-                    return val;
-                }
+        if let Some(pos) = line.find("IGNITE_MEMORY_MB:") {
+            let val_str = &line[pos + "IGNITE_MEMORY_MB:".len()..];
+            if let Ok(val) = val_str.trim().parse::<f64>() {
+                return val;
             }
         }
     }
@@ -181,12 +184,10 @@ fn parse_memory_from_stderr(stderr: &str) -> f64 {
 
 fn estimate_cold_start_time(stderr: &str, duration_ms: u64) -> u64 {
     for line in stderr.lines() {
-        if line.contains("IGNITE_INIT_TIME:") {
-            if let Some(pos) = line.find("IGNITE_INIT_TIME:") {
-                let val_str = &line[pos + "IGNITE_INIT_TIME:".len()..];
-                if let Ok(val) = val_str.trim().parse::<u64>() {
-                    return val;
-                }
+        if let Some(pos) = line.find("IGNITE_INIT_TIME:") {
+            let val_str = &line[pos + "IGNITE_INIT_TIME:".len()..];
+            if let Ok(val) = val_str.trim().parse::<u64>() {
+                return val;
             }
         }
     }

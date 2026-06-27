@@ -1,98 +1,87 @@
 # Getting Started
 
-This guide gets you from zero to first secure execution in under five minutes.
+This guide gets you from zero to first secure microVM execution in under five minutes.
 
 ## Prerequisites
 
-- Docker installed and running
-- Ignite installed (single binary)
+- **Linux**: KVM enabled (verify with `kvm-ok` or that `/dev/kvm` exists) and `e2fsprogs` package installed.
+- **macOS**: macOS 13 or later.
 
-Install Docker: <https://docs.docker.com/get-docker/>
+## Setup & Compilation
 
-## Install Ignite
+Clone and build the release binary:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/dev-dami/ignite/master/install.sh | bash
+git clone https://github.com/dev-dami/ignite.git
+cd ignite
+cargo build --release
+```
+
+The output binary is compiled at `target/release/ignite-cli`. Copy it to your PATH:
+
+```bash
+cp target/release/ignite-cli /usr/local/bin/ignite
 ignite --version
 ```
 
-## Create a Service
+## Resources Configuration
+
+By default, the CLI expects the kernel image, rootfs, and language runtimes in the folder `./resources/`:
+
+* `resources/vmlinux`: Uncompressed Linux kernel binary.
+* `resources/rootfs.ext4`: Minimal ext4 root filesystem containing the guest agent.
+* `resources/runtimes/`: Directories containing versioned runtimes (e.g. `resources/runtimes/bun/bin/bun`).
+
+These can be configured via environment variables or CLI flags (e.g., `--kernel`, `--rootfs`, `--runtimes-root`).
+
+## Initialize a Service
+
+Generate a new service directory:
 
 ```bash
 ignite init hello-world
 cd hello-world
 ```
 
-Generated files:
+This creates:
+- `service.yaml`: Sandbox configurations.
+- `package.json`: Legacy metadata file.
+- `index.js` or `index.ts`: The entrypoint logic.
 
-```text
-hello-world/
-├── service.yaml
-├── package.json
-└── index.ts
-```
+## Execute inside Sandbox
 
-`ignite init` refuses to overwrite existing generated files.
-
-## Execute
+Run the service inside a microVM:
 
 ```bash
 ignite run .
 ```
 
-## Pass Input
+To enable verbose logs showing microsecond timings for each execution phase:
 
 ```bash
-ignite run . --input '{"name":"Developer"}'
+ignite run . --verbose
 ```
-
-Input is available via `process.env.IGNITE_INPUT`.
-
-## Run in Hardened Audit Mode
-
-```bash
-ignite run . --audit
-```
-
-Audit mode applies restrictive sandbox flags and prints a security audit summary.
 
 ## Preflight Checks
+
+Run validators to check memory allocations and dependencies sizes:
 
 ```bash
 ignite preflight .
 ```
 
-Preflight validates memory, dependencies, timeout, and (when image exists) image size.
+## Serve HTTP Server
 
-## Serve Over HTTP
+Start the REST API:
 
 ```bash
-ignite serve --services . --port 3000
+ignite serve --services ./services --port 3000
 ```
 
-Then call:
+Execute a service over REST:
 
 ```bash
 curl -X POST http://localhost:3000/services/hello-world/execute \
   -H 'Content-Type: application/json' \
-  -d '{"input":{"name":"Developer"}}'
+  -d '{"input":{"message":"Hello Ignite"}}'
 ```
-
-## Troubleshooting
-
-### Docker daemon not reachable
-
-Start Docker Desktop or the Docker service and retry.
-
-### Docker permission denied (Linux)
-
-```bash
-sudo usermod -aG docker $USER
-# sign out and sign in again
-```
-
-## Next Steps
-
-- [Walkthrough](./walkthrough.md)
-- [API Reference](./api.md)
-- [Threat Model](./threat-model.md)

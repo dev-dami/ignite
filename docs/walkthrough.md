@@ -1,6 +1,6 @@
 # Walkthrough
 
-This walkthrough builds a realistic service, runs preflight checks, executes it in audit mode, and exposes it through the HTTP API.
+This walkthrough builds a realistic service, runs preflight checks, executes it in a virtualized microVM sandbox, and exposes it through the HTTP API.
 
 ## 1) Create Service
 
@@ -11,26 +11,12 @@ cd data-processor
 
 ## 2) Implement Logic
 
-Edit `index.ts`:
+Edit `index.js`:
 
-```ts
-interface Input {
-  data: number[];
-  operation: 'sum' | 'average' | 'max' | 'min';
-}
+```js
+const input = process.env.IGNITE_INPUT ? JSON.parse(process.env.IGNITE_INPUT) : {"data":[],"operation":"sum"};
 
-interface Output {
-  result: number;
-  operation: Input['operation'];
-  count: number;
-  timestamp: string;
-}
-
-const input: Input = JSON.parse(
-  process.env.IGNITE_INPUT || '{"data":[],"operation":"sum"}'
-);
-
-function calculate(data: number[], operation: Input['operation']): number {
+function calculate(data, operation) {
   if (data.length === 0) return 0;
 
   switch (operation) {
@@ -45,7 +31,7 @@ function calculate(data: number[], operation: Input['operation']): number {
   }
 }
 
-const output: Output = {
+const output = {
   result: calculate(input.data, input.operation),
   operation: input.operation,
   count: input.data.length,
@@ -63,7 +49,7 @@ Edit `service.yaml`:
 service:
   name: data-processor
   runtime: bun@1.3
-  entry: index.ts
+  entry: index.js
   memoryMb: 128
   cpuLimit: 1
   timeoutMs: 10000
@@ -71,76 +57,51 @@ service:
     NODE_ENV: production
 ```
 
-## 4) Run Preflight
+## 4) Run Preflight Checks
+
+Run preflight checks to validate configurations and memory limits:
 
 ```bash
 ignite preflight .
 ```
 
-If preflight fails, update config before execution.
+If checks return `FAIL`, optimize the configurations or dependencies before executing the service.
 
-## 5) Execute
+## 5) Execute Sandbox VM
+
+Run the service inside the hardware-isolated microVM:
 
 ```bash
 ignite run . --input '{"data":[1,2,3,4],"operation":"sum"}'
 ```
 
-Expected output includes the service JSON payload and execution report.
-
-## 6) Execute With Audit
+To see trace timings for the formatting of the virtual block device images and KVM launch steps, add the `--verbose` flag:
 
 ```bash
-ignite run . --audit --input '{"data":[10,20,30],"operation":"average"}'
+ignite run . --input '{"data":[1,2,3,4],"operation":"sum"}' --verbose
 ```
 
-Use this mode for untrusted code paths.
+## 6) Expose Service via HTTP REST API
 
-## 7) Generate Report
-
-```bash
-ignite report . --json
-```
-
-Or save to file:
-
-```bash
-ignite report . --json --output report.json
-```
-
-## 8) Environment Locking
-
-Create manifest:
-
-```bash
-ignite lock .
-```
-
-Check for drift:
-
-```bash
-ignite lock . --check
-```
-
-## 9) Expose Service via HTTP
-
-Run server from parent directory containing services:
+Run the server pointing to the folder containing the services:
 
 ```bash
 cd ..
-ignite serve --services . --port 3000
+ignite serve --services ./services --port 3000
 ```
 
-Call execute endpoint:
+Now, invoke execution from a client using curl:
 
 ```bash
 curl -X POST http://localhost:3000/services/data-processor/execute \
   -H 'Content-Type: application/json' \
-  -d '{"input":{"data":[5,10,15],"operation":"max"},"audit":true}'
+  -d '{"input":{"data":[5,10,15],"operation":"max"}}'
 ```
 
-## 10) Operational Recommendations
+---
 
-- Keep runtime versions pinned in `service.yaml`.
-- Prefer `--audit` for user-provided or AI-generated code.
-- Set conservative `memoryMb` and `timeoutMs` for each service.
-- Keep services single-purpose; split complex workflows.
+## 7) Operational Recommendations
+
+- **Pin Versions**: Always keep runtime versions pinned in `service.yaml` (e.g., `bun@1.3`, `node@20`) to guarantee deterministic block mounting on the host.
+- **Resource Constraints**: Set conservative `memoryMb` and `timeoutMs` for each service to bound untrusted execution loops.
+- **Single Purpose**: Keep services modular; decouple large tasks into separate services.

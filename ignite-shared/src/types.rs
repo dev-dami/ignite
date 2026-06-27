@@ -106,13 +106,11 @@ pub struct RuntimeSpec {
 
 impl RuntimeSpec {
     pub fn parse(runtime: &str) -> Self {
-        if let Some(at_idx) = runtime.rfind('@') {
-            if at_idx > 0 {
-                return RuntimeSpec {
-                    name: runtime[..at_idx].to_string(),
-                    version: Some(runtime[at_idx + 1..].to_string()),
-                };
-            }
+        if let Some(at_idx) = runtime.rfind('@').filter(|&idx| idx > 0) {
+            return RuntimeSpec {
+                name: runtime[..at_idx].to_string(),
+                version: Some(runtime[at_idx + 1..].to_string()),
+            };
         }
         RuntimeSpec {
             name: runtime.to_string(),

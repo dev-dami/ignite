@@ -14,25 +14,12 @@ ignite init <name> [options]
 
 Options:
 
-- `-p, --path <path>`: custom output path
+- `-p, --path <path>`: custom output path (defaults to name)
 - `-r, --runtime <runtime>`: runtime spec (default `bun`)
-
-Examples:
-
-```bash
-ignite init my-service
-ignite init my-service --runtime node@20
-ignite init my-service --path ./services/my-service
-```
-
-Notes:
-
-- Runtime is validated against supported runtimes/versions.
-- Existing generated files are not overwritten.
 
 ### `ignite run <service>`
 
-Execute a service in Docker.
+Execute a service inside a virtualized microVM sandbox.
 
 ```bash
 ignite run <service> [options]
@@ -40,68 +27,34 @@ ignite run <service> [options]
 
 Options:
 
-- `-i, --input <json>`
-- `-r, --runtime <runtime>`
-- `--skip-preflight`
-- `--json`
-- `--audit`
-- `--audit-output <file>`
-
-Examples:
-
-```bash
-ignite run ./my-service
-ignite run ./my-service --input '{"name":"world"}'
-ignite run ./my-service --runtime node@22
-ignite run ./my-service --audit --json --audit-output audit.json
-```
-
-Behavior note:
-
-- `--skip-preflight` bypasses fail-fast blocking, but preflight still runs and is included in reporting.
+- `-i, --input <json>`: JSON-serialized payload sent to guest runtime.
+- `-r, --runtime <runtime>`: runtime spec override.
+- `--skip-preflight`: run preflight checks but do not block execution on failure.
+- `--json`: output execution report in JSON format.
+- `--verbose`: show sub-millisecond timings of all microVM lifecycle phases.
+- `--memory <mb>`: override RAM allocation limit (in MB) assigned to the VM.
+- `--cpus <cores>`: override CPU cores assigned to the VM.
+- `--kernel <path>`: path to custom guest vmlinux kernel.
+- `--rootfs <path>`: path to custom guest rootfs disk.
+- `--runtimes-root <path>`: path to custom host language runtimes folder.
+- `--vsock-port <port>`: custom host-guest VSOCK communication port.
+- `--console-out <path>`: file path to log guest serial console outputs.
 
 ### `ignite preflight <service>`
 
-Run preflight checks without execution.
+Run preflight validators without execution.
 
 ```bash
 ignite preflight <service>
 ```
 
-Example:
-
-```bash
-ignite preflight ./my-service
-```
-
 Exit behavior:
 
-- exits non-zero when overall status is `fail`
-
-### `ignite report <service>`
-
-Generate preflight report.
-
-```bash
-ignite report <service> [options]
-```
-
-Options:
-
-- `-o, --output <file>`
-- `--json`
-
-Examples:
-
-```bash
-ignite report ./my-service
-ignite report ./my-service --json
-ignite report ./my-service --json --output report.json
-```
+- exits with code `0` on `pass`/`warn` statuses, and code `1` on `fail`.
 
 ### `ignite serve`
 
-Start HTTP server.
+Start HTTP REST API server.
 
 ```bash
 ignite serve [options]
@@ -109,59 +62,13 @@ ignite serve [options]
 
 Options:
 
-- `-p, --port <port>` (default `3000`)
-- `-h, --host <host>` (default `localhost`)
-- `-s, --services <path>` (default `./services`)
+- `-p, --port <port>`: API port (default `3000`)
+- `-h, --host <host>`: host IP to bind (default `localhost`)
+- `-s, --services <path>`: path to services root folder (default `./services`)
 
-Example:
+---
 
-```bash
-ignite serve --services ./services --host 127.0.0.1 --port 3000
-```
-
-### `ignite lock <service>`
-
-Manage `ignite.lock` environment manifest.
-
-```bash
-ignite lock <service> [options]
-```
-
-Options:
-
-- `-u, --update`
-- `-c, --check`
-
-Examples:
-
-```bash
-ignite lock ./my-service
-ignite lock ./my-service --update
-ignite lock ./my-service --check
-```
-
-### `ignite env [service]`
-
-Show environment info or list runtimes.
-
-```bash
-ignite env [service] [options]
-```
-
-Options:
-
-- `--runtimes`
-
-Examples:
-
-```bash
-ignite env ./my-service
-ignite env --runtimes
-```
-
-## HTTP API
-
-Base URL defaults to `http://localhost:3000`.
+## HTTP REST API
 
 ### `GET /health`
 
@@ -171,43 +78,25 @@ Response:
 {
   "status": "ok",
   "version": "0.1.0",
-  "uptime": 123
+  "uptime": 0
 }
 ```
 
 ### `GET /services`
 
-List service directories under configured services path.
+List service folders under the configured services path root.
 
 Response:
 
 ```json
 {
-  "services": ["service-a", "service-b"]
-}
-```
-
-### `GET /services/:serviceName/preflight`
-
-Run preflight for a service.
-
-Response:
-
-```json
-{
-  "serviceName": "data-processor",
-  "preflight": {
-    "serviceName": "data-processor",
-    "timestamp": "2026-01-01T00:00:00.000Z",
-    "checks": [],
-    "overallStatus": "pass"
-  }
+  "services": ["hello-world", "data-processor"]
 }
 ```
 
 ### `POST /services/:serviceName/execute`
 
-Execute service.
+Execute service inside microVM sandbox.
 
 Request body:
 
@@ -215,8 +104,7 @@ Request body:
 {
   "input": { "data": [1, 2, 3] },
   "skipPreflight": false,
-  "skipBuild": false,
-  "audit": true
+  "audit": false
 }
 ```
 
@@ -227,92 +115,37 @@ Response:
   "success": true,
   "serviceName": "data-processor",
   "metrics": {
-    "executionTimeMs": 120,
-    "memoryUsageMb": 40,
+    "executionTimeMs": 85,
+    "memoryUsageMb": 34.2,
     "coldStart": true,
+    "coldStartTimeMs": 14,
     "exitCode": 0,
     "stdout": "...",
     "stderr": "..."
   },
   "preflight": {
     "serviceName": "data-processor",
-    "timestamp": "2026-01-01T00:00:00.000Z",
-    "checks": [],
+    "timestamp": "2026-06-27T17:33:00.000Z",
+    "checks": [
+      {
+        "name": "dependency-count",
+        "status": "pass",
+        "message": "Low dependency count (0)",
+        "value": 0,
+        "threshold": 50
+      }
+    ],
     "overallStatus": "pass"
-  },
-  "securityAudit": {
-    "events": [],
-    "summary": {
-      "networkAttempts": 0,
-      "networkBlocked": 0,
-      "filesystemReads": 0,
-      "filesystemWrites": 0,
-      "filesystemBlocked": 0,
-      "processSpawns": 0,
-      "processBlocked": 0,
-      "overallStatus": "clean"
-    },
-    "policy": {
-      "network": { "enabled": false },
-      "filesystem": { "readOnly": true },
-      "process": { "allowSpawn": false }
-    }
   }
 }
 ```
 
-Error response shape (execute endpoint):
+Error response:
 
 ```json
 {
   "success": false,
   "serviceName": "data-processor",
-  "error": "message"
+  "error": "Detailed error message"
 }
 ```
-
-Common status codes:
-
-- `400`: invalid service name or preflight fail in execute path
-- `401`: missing/invalid bearer token when API key auth is configured
-- `404`: route not found
-- `429`: rate limit exceeded
-- `500`: internal/service execution errors
-
-## Configuration Schema (`service.yaml`)
-
-```yaml
-service:
-  name: my-service
-  runtime: bun@1.3
-  entry: index.ts
-  memoryMb: 128
-  cpuLimit: 1
-  timeoutMs: 30000
-  env:
-    NODE_ENV: production
-
-preflight:
-  memory:
-    baseMb: 50
-    perDependencyMb: 2
-    warnRatio: 1
-    failRatio: 0.8
-  dependencies:
-    warnCount: 100
-    infoCount: 50
-  image:
-    warnMb: 500
-    failMb: 1000
-  timeout:
-    minMs: 100
-    maxMs: 30000
-    coldStartBufferMs: 500
-```
-
-Security policy file names (loaded in audit mode):
-
-- `ignite.policy.yaml`
-- `ignite.policy.yml`
-- `.ignite-policy.yaml`
-- `.ignite-policy.yml`

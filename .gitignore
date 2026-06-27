@@ -36,3 +36,7 @@ coverage/
 agent.md
 docs/site/
 design-system/ignite-docs/MASTER.md
+
+# Rust build target & workspace files
+target/
+.omg/

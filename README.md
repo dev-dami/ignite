@@ -5,73 +5,80 @@
 <h1 align="center">Ignite</h1>
 
 <p align="center">
-  <strong>Secure sandbox execution for AI-generated code, untrusted scripts, and JS/TS services.</strong>
+  <strong>Ultra-secure microVM sandboxing for JS/TS services, AI-generated code, and untrusted scripts.</strong>
 </p>
 
 <p align="center">
   <a href="https://github.com/dev-dami/ignite/releases"><img src="https://img.shields.io/github/v/release/dev-dami/ignite?style=flat-square&color=blue" alt="Release"></a>
   <a href="https://github.com/dev-dami/ignite/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="License"></a>
   <a href="https://github.com/dev-dami/ignite/actions"><img src="https://img.shields.io/github/actions/workflow/status/dev-dami/ignite/ci.yml?style=flat-square" alt="Build"></a>
-  <a href="https://bun.sh"><img src="https://img.shields.io/badge/Bun-1.3+-f472b6?style=flat-square&logo=bun" alt="Bun"></a>
-  <a href="https://www.docker.com/"><img src="https://img.shields.io/badge/Docker-required-2496ED?style=flat-square&logo=docker" alt="Docker"></a>
+  <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/Rust-1.75+-orange?style=flat-square&logo=rust" alt="Rust"></a>
 </p>
 
 ## Overview
 
-Ignite runs JavaScript/TypeScript code inside isolated Docker containers with optional hardened audit mode. It is designed for systems that execute code you do not fully trust:
+Ignite runs JavaScript/TypeScript code inside isolated, hardware-virtualized microVMs rather than containers. It supports native **Firecracker** on Linux and Apple's **Virtualization.framework** on macOS out of the box, with zero external VM dependencies.
+
+It is designed for systems that execute code you do not fully trust:
 
 - AI agent generated code
-- plugin or extension ecosystems
-- user submissions and sandboxed automation
-- security-sensitive CI checks
+- Plugin or extension ecosystems
+- User submissions and sandboxed automation
+- Security-sensitive CI checks
 
-## Why Ignite
+## Key Features
 
-- Container isolation with resource limits (`memoryMb`, `cpuLimit`, `timeoutMs`)
-- Preflight checks before execution (memory, dependency load, timeout, image size)
-- Security audit mode (`--audit`) with network blocking and read-only root filesystem
-- Runtime registry with versioned runtime selection (`bun@1.3`, `node@20`, `deno@2.0`, `quickjs@latest`)
-- CLI and HTTP server interfaces
+- **Dual-Hypervisor Core**: Uses KVM-backed Firecracker on Linux, and native `Virtualization.framework` on macOS.
+- **Host-Reliant Disk Mounts**: The guest microVM has no shell, utilities, or libraries. Service code and language runtimes (Bun, Node, Deno, QuickJS) are compiled on the host and attached as read-only virtual block devices (`/dev/vdb` and `/dev/vdc`).
+- **VSOCK Multiplexing**: Low-latency communication handshakes stream stdout/stderr and exit codes directly back to the host via virtual sockets, bypassing network interfaces.
+- **Preflight & Metric Timelines**: Sub-millisecond logging of all VM lifecycle transitions (disk format, boot connect, execution, cleanup).
 
 ## Quick Start
 
-### 1) Install
+### 1) Prerequisites
+
+- **Linux**: KVM enabled (`/dev/kvm` accessible) and `e2fsprogs` installed.
+- **macOS**: macOS 13 or later.
+
+### 2) Build from Source
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/dev-dami/ignite/master/install.sh | bash
-ignite --version
+git clone https://github.com/dev-dami/ignite.git
+cd ignite
+cargo build --release
 ```
 
-### 2) Initialize a service
+Release binaries will be compiled under `target/release/ignite-cli` (installed as `ignite`).
+
+### 3) Initialize a Service
 
 ```bash
 ignite init hello-world
 cd hello-world
 ```
 
-### 3) Run it
+### 4) Run the VM Sandbox
 
 ```bash
 ignite run .
 ```
 
-### 4) Run in hardened audit mode
+To run with trace timelines of startup transitions:
 
 ```bash
-ignite run . --audit
+ignite run . --verbose
 ```
 
-## CLI At A Glance
+---
+
+## CLI at a Glance
 
 | Command | Purpose |
 |---|---|
 | `ignite init <name>` | Generate a new service scaffold |
-| `ignite run <path>` | Build + execute service in Docker |
-| `ignite preflight <path>` | Run safety checks only |
-| `ignite report <path>` | Generate preflight report |
-| `ignite lock <path>` | Create/update `ignite.lock` manifest |
-| `ignite env [path]` | Show environment/runtime information |
-| `ignite serve` | Start HTTP API server |
+| `ignite run <path>` | Build + execute service in a microVM |
+| `ignite preflight <path>` | Run safety validator checks |
+| `ignite serve` | Start HTTP REST API server |
 
 ## Runtime Support
 
@@ -82,53 +89,13 @@ ignite run . --audit
 | Deno | `1.40`, `1.41`, `1.42`, `2.0` | `2.0` |
 | QuickJS | `2024-01-13`, `2023-12-09`, `latest` | `latest` |
 
-Ignite accepts version-qualified runtime values and validates compatibility. Examples: `bun@1.3`, `node@20.12.0`.
-
 ## Documentation
 
 - [Getting Started](./docs/getting-started.md)
 - [Walkthrough](./docs/walkthrough.md)
 - [API Reference](./docs/api.md)
 - [Architecture](./docs/architecture.md)
-- [Preflight Checks](./docs/preflight.md)
 - [Threat Model](./docs/threat-model.md)
-- [Research Notes](./docs/research.md)
-- [Interactive Docs Website](./docs/site/index.html)
-
-## Build From Source
-
-```bash
-git clone https://github.com/dev-dami/ignite.git
-cd ignite
-bun install
-bun run build
-```
-
-To build release binaries and checksums:
-
-```bash
-bun run scripts/build-binaries.ts
-```
-
-Artifacts are written to `dist/`:
-
-- `ignite-<platform>.tar.gz`
-- `SHA256SUMS`
-
-## Verify Release Artifacts
-
-```bash
-cd dist
-sha256sum -c SHA256SUMS
-```
-
-## Security Notes
-
-`--audit` is the recommended mode for untrusted code. In this mode Ignite applies restrictive Docker flags and emits a security audit report. See [Threat Model](./docs/threat-model.md) for boundaries, assumptions, and non-goals.
-
-## Contributing
-
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for setup, test workflow, and release process.
 
 ## License
 

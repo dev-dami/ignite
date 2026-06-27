@@ -1,9 +1,9 @@
 use axum::{
-    extract::{Path as AxumPath, State, FromRef},
+    Json, Router,
+    extract::{FromRef, Path as AxumPath, State},
     http::StatusCode,
     response::IntoResponse,
     routing::{get, post},
-    Json, Router,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -13,7 +13,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tower_http::cors::CorsLayer;
 
-use ignite_core::execution::{execute_service, ExecuteOptions};
+use ignite_core::execution::{ExecuteOptions, execute_service};
 use ignite_shared::types::ExecutionMetrics;
 
 pub struct ServerState {
@@ -72,7 +72,7 @@ where
         state: &S,
     ) -> Result<Self, Self::Rejection> {
         let server_state: Arc<ServerState> = FromRef::from_ref(state);
-        
+
         // 1. Check rate limit first
         let client_ip = parts
             .headers
@@ -95,10 +95,8 @@ where
                 .get("Authorization")
                 .and_then(|v| v.to_str().ok());
 
-            if let Some(token) = auth {
-                if token.starts_with("Bearer ") && &token[7..] == key {
-                    return Ok(RequireAuth);
-                }
+            if auth.filter(|t| t.starts_with("Bearer ") && &t[7..] == key).is_some() {
+                return Ok(RequireAuth);
             }
             return Err((
                 StatusCode::UNAUTHORIZED,
@@ -126,10 +124,9 @@ async fn list_services(
     let mut services = Vec::new();
     if let Ok(entries) = fs::read_dir(&state.services_path) {
         for entry in entries.flatten() {
-            if entry.path().is_dir() {
-                if let Some(name) = entry.file_name().to_str() {
-                    services.push(name.to_string());
-                }
+            let path = entry.path();
+            if let Some(name) = path.file_name().and_then(|n| n.to_str()).filter(|_| path.is_dir()) {
+                services.push(name.to_string());
             }
         }
     }
@@ -234,7 +231,10 @@ pub fn create_router(state: Arc<ServerState>) -> Router {
     Router::new()
         .route("/health", get(health))
         .route("/services", get(list_services))
-        .route("/services/:serviceName/execute", post(execute_service_handler))
+        .route(
+            "/services/:serviceName/execute",
+            post(execute_service_handler),
+        )
         .layer(
             CorsLayer::new()
                 .allow_origin(tower_http::cors::Any)
