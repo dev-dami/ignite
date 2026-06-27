@@ -27,14 +27,16 @@ pub fn generate_warnings(
     }
 
     if let Some(exec) = execution {
-        if exec.cold_start && exec.cold_start_time_ms.is_some_and(|t| t > COLD_START_WARNING_THRESHOLD_MS) {
+        if exec.cold_start
+            && exec
+                .cold_start_time_ms
+                .is_some_and(|t| t > COLD_START_WARNING_THRESHOLD_MS)
+        {
             let cold_time = exec.cold_start_time_ms.unwrap_or(0);
             warnings.push(Warning {
                 level: WarningLevel::Warning,
                 message: format!("Cold start time {}ms is high", cold_time),
-                suggestion: Some(
-                    "Reduce dependencies or use lighter base images".to_string(),
-                ),
+                suggestion: Some("Reduce dependencies or use lighter base images".to_string()),
             });
         }
 

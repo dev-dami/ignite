@@ -19,7 +19,12 @@ fn get_dir_size<P: AsRef<Path>>(path: P) -> Result<u64> {
 
 fn find_mke2fs() -> Option<PathBuf> {
     // 1. Try checking standard PATH first
-    if let Some(output) = Command::new("which").arg("mke2fs").output().ok().filter(|o| o.status.success()) {
+    if let Some(output) = Command::new("which")
+        .arg("mke2fs")
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+    {
         let path_str = String::from_utf8_lossy(&output.stdout).trim().to_string();
         if !path_str.is_empty() {
             return Some(PathBuf::from(path_str));

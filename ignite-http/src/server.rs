@@ -95,7 +95,10 @@ where
                 .get("Authorization")
                 .and_then(|v| v.to_str().ok());
 
-            if auth.filter(|t| t.starts_with("Bearer ") && &t[7..] == key).is_some() {
+            if auth
+                .filter(|t| t.starts_with("Bearer ") && &t[7..] == key)
+                .is_some()
+            {
                 return Ok(RequireAuth);
             }
             return Err((
@@ -125,7 +128,11 @@ async fn list_services(
     if let Ok(entries) = fs::read_dir(&state.services_path) {
         for entry in entries.flatten() {
             let path = entry.path();
-            if let Some(name) = path.file_name().and_then(|n| n.to_str()).filter(|_| path.is_dir()) {
+            if let Some(name) = path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .filter(|_| path.is_dir())
+            {
                 services.push(name.to_string());
             }
         }
