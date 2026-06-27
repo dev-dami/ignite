@@ -13,7 +13,7 @@ use ignite_shared::validation::validate_service_name;
 #[derive(Parser)]
 #[command(
     name = "ignite",
-    version = "0.9.0",
+    version = "0.3.0",
     about = "Secure sandbox execution for JS/TS in microVMs"
 )]
 struct Cli {
