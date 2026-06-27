@@ -1,0 +1,12 @@
+[package]
+name = "ignite-guest-agent"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ignite-shared = { path = "../ignite-shared" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+libc.workspace = true
+
