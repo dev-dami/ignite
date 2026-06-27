@@ -1,0 +1,30 @@
+[workspace]
+resolver = "3"
+members = [
+    "ignite-shared",
+    "ignite-core",
+    "ignite-cli",
+    "ignite-http",
+    "ignite-guest-agent",
+]
+
+[workspace.dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9"
+serde_json = "1.0"
+thiserror = "1.0"
+tokio = { version = "1.35", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+clap = { version = "4.4", features = ["derive"] }
+axum = "0.7"
+validator = { version = "0.16", features = ["derive"] }
+regex = "1.10"
+libc = "0.2"
+tempfile = "3.8"
+chrono = { version = "0.4", features = ["serde"] }
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+
+
+
+
