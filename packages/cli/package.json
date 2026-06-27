@@ -10,8 +10,8 @@
     "access": "public"
   },
   "scripts": {
-    "build": "bun run tsc",
-    "dev": "bun run tsc --watch",
+    "build": "tsup",
+    "dev": "tsup --watch",
     "clean": "rm -rf dist"
   },
   "dependencies": {
