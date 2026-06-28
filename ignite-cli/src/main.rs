@@ -843,8 +843,16 @@ fn handle_setup(force: bool) -> Result<()> {
 
     // Rootfs check
     let rootfs_path = ignite_dir.join("rootfs.ext4");
+    let agent_path = ignite_dir.join("guest-agent");
     if rootfs_path.exists() {
         println!("  \x1b[32m✓\x1b[0m Rootfs image exists");
+    } else if agent_path.exists() {
+        print!("  Creating rootfs image... ");
+        std::io::Write::flush(&mut std::io::stdout()).ok();
+        match setup::create_rootfs(&ignite_dir, &agent_path) {
+            Ok(path) => println!("\x1b[32m✓\x1b[0m {:?}", path),
+            Err(e) => println!("\x1b[33m⚠\x1b[0m {}", e),
+        }
     } else {
         println!("  \x1b[33m⚠\x1b[0m Rootfs not found. Build guest agent first:");
         println!("      cargo build --release --bin ignite-guest-agent");
