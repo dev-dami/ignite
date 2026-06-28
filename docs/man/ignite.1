@@ -1,0 +1,211 @@
+.TH IGNITE 1 "2026-06-28" "ignite 0.9.0" "User Commands"
+.SH NAME
+ignite \- secure sandbox execution for JS/TS in microVMs
+.SH SYNOPSIS
+.B ignite
+.I command
+.RI [ arguments ]
+.SH DESCRIPTION
+.B ignite
+runs JavaScript and TypeScript code inside isolated, hardware-virtualized
+microVMs rather than containers. It supports native Firecracker on Linux
+and Apple's Virtualization.framework on macOS with zero external VM
+dependencies.
+.PP
+Designed for systems that execute untrusted code: AI-generated scripts,
+plugin ecosystems, user submissions, and security-sensitive CI checks.
+.SH COMMANDS
+.SS "ignite init \fIname\fR"
+Initialize a new service scaffold.
+.TP
+.BR \-p ", " \-\-path " " \fIdir\fR
+Custom output directory (default: \fIname\fR).
+.TP
+.BR \-r ", " \-\-runtime " " \fIruntime\fR
+Runtime selection: bun, node, deno, quickjs (default: bun).
+.SS "ignite run \fIpath\fR"
+Build and execute a service inside a microVM sandbox.
+.TP
+.BR \-i ", " \-\-input " " \fIjson\fR
+JSON-serialized input arguments passed to the service.
+.TP
+.BR \-r ", " \-\-runtime " " \fIspec\fR
+Runtime spec override (e.g. bun@1.3).
+.TP
+.BR \-\-skip\-preflight
+Skip preflight security checks and force execution.
+.TP
+.BR \-\-json
+Output execution report in JSON format.
+.TP
+.BR \-\-audit
+Run in hardened security audit mode.
+.TP
+.BR \-\-audit\-output " " \fIfile\fR
+Write security audit logs JSON to file.
+.TP
+.BR \-v ", " \-\-verbose
+Show sub-millisecond timelines of VM phases.
+.TP
+.BR \-\-memory " " \fImb\fR
+Override RAM allocation limit in MB.
+.TP
+.BR \-\-cpus " " \fIcores\fR
+Override CPU cores allocation limit.
+.TP
+.BR \-\-kernel " " \fIpath\fR
+Custom guest kernel image binary path.
+.TP
+.BR \-\-rootfs " " \fIpath\fR
+Custom guest root filesystem disk path.
+.TP
+.BR \-\-runtimes\-root " " \fIpath\fR
+Custom guest language runtimes directory path.
+.TP
+.BR \-\-vsock\-port " " \fIport\fR
+Custom VSOCK host connection port.
+.TP
+.BR \-\-console\-out " " \fIfile\fR
+File path to log guest serial console outputs.
+.SS "ignite preflight \fIpath\fR"
+Run service preflight security checks only, without executing.
+.SS "ignite validate \fIpath\fR"
+Validate a service configuration without running preflight or execution.
+Checks service.yaml fields, runtime support, entry file existence,
+memory/timeout values, and package.json presence.
+.SS "ignite status"
+Show system status and health. Displays KVM/Virtualization.framework
+availability, KVM permissions, supported runtimes, and working directory.
+.SS "ignite list"
+List all supported runtimes with their versions and defaults.
+.SS "ignite logs \fIpath\fR"
+View past execution logs from audit output or console capture files.
+.TP
+.BR \-n ", " \-\-lines " " \fIn\fR
+Show only the last N entries (default: 20).
+.SS "ignite version"
+Show version information.
+.TP
+.BR \-v ", " \-\-verbose
+Show detailed build information including edition, authors, license,
+repository, build time, and git hash.
+.SS "ignite templates"
+Manage service templates.
+.TP
+.IR "templates list" " (default)"
+List all available built-in and user templates.
+.TP
+.IR "templates show " \fIname\fR
+Show details for a specific template.
+.SS "ignite serve"
+Start the HTTP REST API server.
+.TP
+.BR \-p ", " \-\-port " " \fIport\fR
+Port to bind API (default: 3000).
+.TP
+.BR \-H ", " \-\-host " " \fIhost\fR
+Host to bind API (default: localhost).
+.TP
+.BR \-s ", " \-\-services " " \fIpath\fR
+Path to services folder root (default: ./services).
+.SH SERVICE CONFIGURATION
+Services are configured via \fBservice.yaml\fR in the service directory:
+.PP
+.RS
+.nf
+service:
+  name: my-service
+  runtime: bun
+  entry: index.ts
+  memoryMb: 128
+  timeoutMs: 5000
+  env:
+    NODE_ENV: production
+.fi
+.RE
+.SH ENVIRONMENT VARIABLES
+.TP
+.B IGNITE_API_KEY
+API key for the HTTP server (serve command).
+.TP
+.B IGNITE_KERNEL_PATH
+Path to custom kernel image.
+.TP
+.B IGNITE_ROOTFS_PATH
+Path to custom root filesystem.
+.TP
+.B IGNITE_RUNTIMES_ROOT
+Path to custom runtimes directory.
+.TP
+.B IGNITE_INSTALL_DIR
+Installation prefix (default: ~/.local).
+.TP
+.B RUST_LOG
+Rust logging filter (e.g. \fBinfo\fR, \fBdebug\fR, \fBignite_core=debug\fR).
+.SH FILES
+.TP
+.I ~/.ignite/
+Default installation directory for runtime binaries, kernel, and rootfs.
+.TP
+.I ./service.yaml
+Service configuration file.
+.TP
+.I ./package.json
+Node/Bun package manifest.
+.SH EXAMPLES
+Initialize and run a new service:
+.PP
+.RS
+.nf
+ignite init hello
+cd hello
+ignite run .
+.fi
+.RE
+.PP
+Validate configuration before running:
+.PP
+.RS
+.nf
+ignite validate .
+.fi
+.RE
+.PP
+Check system readiness:
+.PP
+.RS
+.nf
+ignite status
+.fi
+.RE
+.PP
+Run with JSON output and resource overrides:
+.PP
+.RS
+.nf
+ignite run . --json --memory 256 --cpus 2
+.fi
+.RE
+.PP
+View audit logs:
+.PP
+.RS
+.nf
+ignite run . --audit-output audit.json
+ignite logs .
+.fi
+.RE
+.SH EXIT STATUS
+.TP
+.B 0
+Success.
+.TP
+.B 1
+Error (service not found, preflight failed, runtime error, etc.).
+.SH SEE ALSO
+.BR docker (1),
+.BR firecracker (1)
+.SH BUGS
+Report bugs at: https://github.com/dev-dami/ignite/issues
+.SH LICENSE
+MIT
