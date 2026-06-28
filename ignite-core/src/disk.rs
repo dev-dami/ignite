@@ -57,10 +57,11 @@ pub fn create_ext4_image(src_dir: &Path, output_img: &Path) -> Result<()> {
         source: None,
     })?;
 
-    // Check directory size to allocate appropriate block limits (dir size + 4MB buffer)
+    // Check directory size to allocate appropriate block limits
+    // Add 20% buffer for ext4 metadata/journal overhead, minimum 50MB
     let src_size = get_dir_size(src_dir).unwrap_or(0);
-    let size_mb = ((src_size as f64) / (1024.0 * 1024.0)).ceil() as u64 + 4;
-    let size_mb = std::cmp::max(size_mb, 8); // Minimum 8MB size to prevent format allocation errors
+    let size_mb = ((src_size as f64) * 1.2 / (1024.0 * 1024.0)).ceil() as u64 + 10;
+    let size_mb = std::cmp::max(size_mb, 50);
 
     // Make sure target output directory structure exists
     if let Some(parent) = output_img.parent() {
