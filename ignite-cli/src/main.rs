@@ -749,14 +749,15 @@ fn handle_templates(command: Option<TemplatesCommand>) -> Result<()> {
             let user_dir = dirs().map(|d| d.join("templates"));
             if let Some(ref user_dir) = user_dir
                 && user_dir.exists()
-                    && let Ok(entries) = fs::read_dir(user_dir) {
-                        for entry in entries.flatten() {
-                            if entry.path().is_dir() {
-                                let name = entry.file_name().to_string_lossy().to_string();
-                                println!("  {:<20} {:<40} custom", name, "(user template)");
-                            }
-                        }
+                && let Ok(entries) = fs::read_dir(user_dir)
+            {
+                for entry in entries.flatten() {
+                    if entry.path().is_dir() {
+                        let name = entry.file_name().to_string_lossy().to_string();
+                        println!("  {:<20} {:<40} custom", name, "(user template)");
                     }
+                }
+            }
 
             println!("\n  Use `ignite init --runtime <name>` to create from defaults.");
             println!("  User templates go in: ~/.ignite/templates/<name>/\n");
