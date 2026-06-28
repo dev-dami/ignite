@@ -351,10 +351,9 @@ fn handle_status() -> Result<()> {
     let kvm_icon = if kvm_ok { "✓" } else { "✗" };
     let kvm_color = if kvm_ok { "\x1b[32m" } else { "\x1b[31m" };
     println!(
-        "  {}{}{}\x1b[0m  KVM: {}",
+        "  {}{}\x1b[0m\x1b[0m  KVM: {}",
         kvm_color,
         kvm_icon,
-        "\x1b[0m",
         if kvm_ok {
             "available"
         } else {
@@ -373,10 +372,9 @@ fn handle_status() -> Result<()> {
         let usable_icon = if kvm_usable { "✓" } else { "⚠" };
         let usable_color = if kvm_usable { "\x1b[32m" } else { "\x1b[33m" };
         println!(
-            "  {}{}{}\x1b[0m  KVM permissions: {}",
+            "  {}{}\x1b[0m\x1b[0m  KVM permissions: {}",
             usable_color,
             usable_icon,
-            "\x1b[0m",
             if kvm_usable {
                 "readable"
             } else {
@@ -518,7 +516,7 @@ fn handle_validate(service: String) -> Result<()> {
 
 fn handle_list() -> Result<()> {
     println!("\n  SUPPORTED RUNTIMES\n");
-    println!("  {:<10} {:<30} {}", "RUNTIME", "VERSIONS", "DEFAULT");
+    println!("  {:<10} {:<30} DEFAULT", "RUNTIME", "VERSIONS");
     println!("  {}", "─".repeat(55));
 
     for rt in RUNTIMES {
@@ -633,8 +631,8 @@ fn handle_logs(service: String, lines: usize) -> Result<()> {
                         let icon = if allowed { "✓" } else { "✗" };
                         let color = if allowed { "\x1b[32m" } else { "\x1b[31m" };
                         println!(
-                            "    {}{}{}\x1b[0m {}: {} -> {}",
-                            color, icon, "\x1b[0m", typ, action, target
+                            "    {}{}\x1b[0m\x1b[0m {}: {} -> {}",
+                            color, icon, typ, action, target
                         );
                     }
                 }
@@ -737,7 +735,7 @@ fn handle_templates(command: Option<TemplatesCommand>) -> Result<()> {
     match command {
         Some(TemplatesCommand::List) | None => {
             println!("\n  AVAILABLE TEMPLATES\n");
-            println!("  {:<20} {:<40} {}", "NAME", "DESCRIPTION", "RUNTIME");
+            println!("  {:<20} {:<40} RUNTIME", "NAME", "DESCRIPTION");
             println!("  {}", "─".repeat(65));
 
             for tmpl in BUILTIN_TEMPLATES {
@@ -749,18 +747,16 @@ fn handle_templates(command: Option<TemplatesCommand>) -> Result<()> {
 
             // Check for user templates
             let user_dir = dirs().map(|d| d.join("templates"));
-            if let Some(ref user_dir) = user_dir {
-                if user_dir.exists() {
-                    if let Ok(entries) = fs::read_dir(user_dir) {
+            if let Some(ref user_dir) = user_dir
+                && user_dir.exists()
+                    && let Ok(entries) = fs::read_dir(user_dir) {
                         for entry in entries.flatten() {
                             if entry.path().is_dir() {
                                 let name = entry.file_name().to_string_lossy().to_string();
-                                println!("  {:<20} {:<40} {}", name, "(user template)", "custom");
+                                println!("  {:<20} {:<40} custom", name, "(user template)");
                             }
                         }
                     }
-                }
-            }
 
             println!("\n  Use `ignite init --runtime <name>` to create from defaults.");
             println!("  User templates go in: ~/.ignite/templates/<name>/\n");
