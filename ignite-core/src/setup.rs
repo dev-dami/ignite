@@ -239,27 +239,40 @@ pub fn download_kernel(ignite_dir: &Path) -> Result<PathBuf> {
         return Ok(kernel_path);
     }
 
-    let host_kernel = PathBuf::from("/boot/vmlinuz");
-    let host_kernel_alt = PathBuf::from(format!(
-        "/boot/vmlinuz-{}",
-        std::process::Command::new("uname")
-            .arg("-r")
-            .output()
-            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
-            .unwrap_or_default()
-    ));
+    // Try to find and copy the host kernel
+    let uname_output = std::process::Command::new("uname").arg("-r").output();
+    let kernel_release = uname_output
+        .ok()
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .unwrap_or_default();
 
-    if host_kernel.exists() {
-        fs::copy(&host_kernel, &kernel_path)?;
-        return Ok(kernel_path);
-    }
-    if host_kernel_alt.exists() {
-        fs::copy(&host_kernel_alt, &kernel_path)?;
-        return Ok(kernel_path);
+    let candidates: Vec<PathBuf> = [
+        "/boot/vmlinuz",
+        "/boot/vmlinuz-linux",
+        "/boot/vmlinuz-linux-lts",
+    ]
+    .iter()
+    .map(PathBuf::from)
+    .chain(if kernel_release.is_empty() {
+        None
+    } else {
+        Some(PathBuf::from(format!("/boot/vmlinuz-{}", kernel_release)))
+    })
+    .chain([
+        PathBuf::from("/boot/bzImage"),
+        PathBuf::from("/boot/kernel"),
+    ])
+    .collect();
+
+    for path in &candidates {
+        if path.exists() {
+            fs::copy(path, &kernel_path)?;
+            return Ok(kernel_path);
+        }
     }
 
     Err(IgniteError::Config {
-        message: "No Linux kernel found. Set IGNITE_KERNEL_PATH or provide vmlinux in ~/.ignite/"
+        message: "No Linux kernel found in /boot. Set IGNITE_KERNEL_PATH to provide one."
             .to_string(),
         source: None,
     })

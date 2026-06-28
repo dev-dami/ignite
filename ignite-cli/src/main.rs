@@ -807,24 +807,16 @@ fn handle_setup(force: bool) -> Result<()> {
     setup::create_directories(&ignite_dir)?;
     println!("  \x1b[32m✓\x1b[0m Directories created");
 
-    // Download kernel
+    // Use host kernel
     let kernel_path = ignite_dir.join("vmlinux");
     if kernel_path.exists() && !force {
         println!("  \x1b[32m✓\x1b[0m Kernel already exists");
     } else {
-        print!("  Download Linux kernel? [y/N] ");
+        print!("  Locating host kernel... ");
         std::io::Write::flush(&mut std::io::stdout()).ok();
-        let mut input = String::new();
-        std::io::stdin().read_line(&mut input).ok();
-        if input.trim().eq_ignore_ascii_case("y") {
-            print!("  Finding kernel... ");
-            std::io::Write::flush(&mut std::io::stdout()).ok();
-            match setup::download_kernel(&ignite_dir) {
-                Ok(path) => println!("\x1b[32m✓\x1b[0m {:?}", path),
-                Err(e) => println!("\x1b[33m⚠\x1b[0m {}", e),
-            }
-        } else {
-            println!("  \x1b[33m⚠\x1b[0m Skipped. Set IGNITE_KERNEL_PATH to provide later.");
+        match setup::download_kernel(&ignite_dir) {
+            Ok(path) => println!("\x1b[32m✓\x1b[0m {:?}", path),
+            Err(e) => println!("\x1b[33m⚠\x1b[0m {}", e),
         }
     }
 
