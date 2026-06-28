@@ -76,6 +76,12 @@ memory/timeout values, and package.json presence.
 .SS "ignite status"
 Show system status and health. Displays KVM/Virtualization.framework
 availability, KVM permissions, supported runtimes, and working directory.
+.SS "ignite setup"
+Setup runtime binaries and VM resources. Downloads kernel and Bun runtime
+after prompting for confirmation.
+.TP
+.BR \-\-force
+Force re-download even if files already exist.
 .SS "ignite list"
 List all supported runtimes with their versions and defaults.
 .SS "ignite logs \fIpath\fR"

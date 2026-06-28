@@ -5,6 +5,7 @@ pub mod platform;
 pub mod preflight;
 pub mod report;
 pub mod runtime;
+pub mod setup;
 
 pub use disk::create_ext4_image;
 pub use execution::{ExecuteOptions, execute_service};

@@ -121,6 +121,12 @@ enum Commands {
         #[arg(short, long)]
         verbose: bool,
     },
+    /// Setup runtime binaries and VM resources
+    Setup {
+        /// Force re-download even if files exist
+        #[arg(long)]
+        force: bool,
+    },
     /// Manage service templates
     Templates {
         /// Template subcommand
@@ -789,6 +795,80 @@ fn dirs() -> Option<PathBuf> {
         .map(|home| PathBuf::from(home).join(".ignite"))
 }
 
+fn handle_setup(force: bool) -> Result<()> {
+    use ignite_core::setup;
+
+    println!("\n  IGNITE SETUP\n");
+
+    let ignite_dir = setup::get_ignite_dir();
+    println!("  Install directory: {:?}\n", ignite_dir);
+
+    // Create directories
+    setup::create_directories(&ignite_dir)?;
+    println!("  \x1b[32m✓\x1b[0m Directories created");
+
+    // Download kernel
+    let kernel_path = ignite_dir.join("vmlinux");
+    if kernel_path.exists() && !force {
+        println!("  \x1b[32m✓\x1b[0m Kernel already exists");
+    } else {
+        print!("  Download Linux kernel? [y/N] ");
+        std::io::Write::flush(&mut std::io::stdout()).ok();
+        let mut input = String::new();
+        std::io::stdin().read_line(&mut input).ok();
+        if input.trim().eq_ignore_ascii_case("y") {
+            print!("  Finding kernel... ");
+            std::io::Write::flush(&mut std::io::stdout()).ok();
+            match setup::download_kernel(&ignite_dir) {
+                Ok(path) => println!("\x1b[32m✓\x1b[0m {:?}", path),
+                Err(e) => println!("\x1b[33m⚠\x1b[0m {}", e),
+            }
+        } else {
+            println!("  \x1b[33m⚠\x1b[0m Skipped. Set IGNITE_KERNEL_PATH to provide later.");
+        }
+    }
+
+    // Download Bun runtime
+    let bun_path = ignite_dir.join("runtimes/bun/bin/bun");
+    if bun_path.exists() && !force {
+        println!("  \x1b[32m✓\x1b[0m Bun runtime already exists");
+    } else {
+        print!("  Download Bun runtime (~10MB)? [y/N] ");
+        std::io::Write::flush(&mut std::io::stdout()).ok();
+        let mut input = String::new();
+        std::io::stdin().read_line(&mut input).ok();
+        if input.trim().eq_ignore_ascii_case("y") {
+            print!("  Downloading Bun... ");
+            std::io::Write::flush(&mut std::io::stdout()).ok();
+            match setup::download_bun(&ignite_dir.join("runtimes")) {
+                Ok(path) => println!("\x1b[32m✓\x1b[0m {:?}", path),
+                Err(e) => println!("\x1b[33m⚠\x1b[0m {}", e),
+            }
+        } else {
+            println!("  \x1b[33m⚠\x1b[0m Skipped. You can run `ignite setup --force` later.");
+        }
+    }
+
+    // Rootfs check
+    let rootfs_path = ignite_dir.join("rootfs.ext4");
+    if rootfs_path.exists() {
+        println!("  \x1b[32m✓\x1b[0m Rootfs image exists");
+    } else {
+        println!("  \x1b[33m⚠\x1b[0m Rootfs not found. Build guest agent first:");
+        println!("      cargo build --release --bin ignite-guest-agent");
+        println!("      cp target/release/ignite-guest-agent ~/.ignite/guest-agent");
+        println!("      Then re-run: ignite setup");
+    }
+
+    // Summary
+    println!("\n  Setup complete!");
+    println!("\n  To verify:");
+    println!("    ignite status");
+    println!();
+
+    Ok(())
+}
+
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt()
@@ -891,6 +971,9 @@ async fn main() -> Result<()> {
                     message: "HTTP server error".to_string(),
                     source: Some(Box::new(e)),
                 })?;
+        }
+        Commands::Setup { force } => {
+            handle_setup(force)?;
         }
     }
 
