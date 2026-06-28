@@ -36,6 +36,14 @@ fn load_service_config(service_path: &Path) -> Result<ServiceConfig> {
     Ok(config)
 }
 
+fn default_ignite_dir() -> PathBuf {
+    if let Ok(home) = std::env::var("HOME") {
+        PathBuf::from(home).join(".ignite")
+    } else {
+        PathBuf::from(".")
+    }
+}
+
 #[allow(clippy::type_complexity)]
 pub fn execute_service(
     service_path: &Path,
@@ -65,16 +73,17 @@ pub fn execute_service(
 
     // 5. Generate ext4 block device for target runtime binaries
     let runtime_spec = ignite_shared::types::RuntimeSpec::parse(&config.service.runtime);
+    let ignite_dir = default_ignite_dir();
     let runtimes_base = options
         .runtimes_root
         .clone()
-        .unwrap_or_else(|| PathBuf::from("./resources/runtimes"));
+        .unwrap_or_else(|| ignite_dir.join("runtimes"));
     let runtime_src_path = runtimes_base.join(&runtime_spec.name);
 
     if !runtime_src_path.exists() {
         return Err(IgniteError::Config {
             message: format!(
-                "Language runtime binaries folder not found: {:?}. Ensure e2fsprogs and runtimes are setup.",
+                "Language runtime binaries folder not found: {:?}. Run `ignite setup` or set IGNITE_RUNTIMES_ROOT.",
                 runtime_src_path
             ),
             source: None,
@@ -86,21 +95,27 @@ pub fn execute_service(
     let kernel_path = options
         .kernel_path
         .clone()
-        .unwrap_or_else(|| PathBuf::from("./resources/vmlinux"));
+        .unwrap_or_else(|| ignite_dir.join("vmlinux"));
     let rootfs_path = options
         .rootfs_path
         .clone()
-        .unwrap_or_else(|| PathBuf::from("./resources/rootfs.ext4"));
+        .unwrap_or_else(|| ignite_dir.join("rootfs.ext4"));
 
     if !kernel_path.exists() {
         return Err(IgniteError::Config {
-            message: format!("Linux kernel binary not found: {:?}", kernel_path),
+            message: format!(
+                "Linux kernel binary not found: {:?}. Run `ignite setup` or set IGNITE_KERNEL_PATH.",
+                kernel_path
+            ),
             source: None,
         });
     }
     if !rootfs_path.exists() {
         return Err(IgniteError::Config {
-            message: format!("Root filesystem image not found: {:?}", rootfs_path),
+            message: format!(
+                "Root filesystem image not found: {:?}. Run `ignite setup` or set IGNITE_ROOTFS_PATH.",
+                rootfs_path
+            ),
             source: None,
         });
     }
