@@ -2,6 +2,10 @@
 name = "ignite-cli"
 version = "0.9.0"
 edition = "2024"
+authors = ["dev-dami"]
+license = "MIT"
+repository = "https://github.com/dev-dami/ignite"
+description = "Secure sandbox execution for JS/TS in microVMs"
 
 [dependencies]
 ignite-shared = { path = "../ignite-shared" }

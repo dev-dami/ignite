@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use ignite_core::execution::{ExecuteOptions, execute_service};
 use ignite_core::report::{create_report, format_report_as_text};
-use ignite_core::runtime::{get_runtime_config, is_valid_runtime};
+use ignite_core::runtime::{get_runtime_config, is_valid_runtime, RUNTIMES};
 use ignite_shared::error::{IgniteError, Result};
 use ignite_shared::types::{PreflightStatus, RuntimeSpec, ServiceConfig};
 use ignite_shared::validation::validate_service_name;
@@ -97,6 +97,46 @@ enum Commands {
         /// Path to services folder root
         #[arg(short, long, default_value = "./services")]
         services: String,
+    },
+    /// Show system status and health
+    Status,
+    /// Validate a service configuration without running
+    Validate {
+        /// Path to service directory
+        service: String,
+    },
+    /// List supported runtimes and versions
+    List,
+    /// View past execution logs
+    Logs {
+        /// Path to service directory
+        service: String,
+        /// Show only the last N entries
+        #[arg(short, long, default_value = "20")]
+        lines: usize,
+    },
+    /// Show version and build information
+    Version {
+        /// Show detailed build information
+        #[arg(short, long)]
+        verbose: bool,
+    },
+    /// Manage service templates
+    Templates {
+        /// Template subcommand
+        #[command(subcommand)]
+        command: Option<TemplatesCommand>,
+    },
+}
+
+#[derive(Subcommand)]
+enum TemplatesCommand {
+    /// List available templates
+    List,
+    /// Show template details
+    Show {
+        /// Template name
+        name: String,
     },
 }
 
@@ -303,6 +343,353 @@ fn handle_preflight(service: String) -> Result<()> {
     Ok(())
 }
 
+fn handle_status() -> Result<()> {
+    println!("\n  IGNITE SYSTEM STATUS\n");
+
+    // KVM check (Linux)
+    let kvm_ok = Path::new("/dev/kvm").exists();
+    let kvm_icon = if kvm_ok { "✓" } else { "✗" };
+    let kvm_color = if kvm_ok { "\x1b[32m" } else { "\x1b[31m" };
+    println!(
+        "  {}{}{}\x1b[0m  KVM: {}",
+        kvm_color, kvm_icon, "\x1b[0m",
+        if kvm_ok { "available" } else { "not found (/dev/kvm)" }
+    );
+
+    // Check if KVM is usable (permissions)
+    if kvm_ok {
+        let kvm_meta = fs::metadata("/dev/kvm");
+        let kvm_readable = kvm_meta.as_ref().map(|m| m.permissions().readonly()).unwrap_or(false);
+        let kvm_usable = kvm_meta.is_ok() && kvm_readable;
+        let usable_icon = if kvm_usable { "✓" } else { "⚠" };
+        let usable_color = if kvm_usable { "\x1b[32m" } else { "\x1b[33m" };
+        println!(
+            "  {}{}{}\x1b[0m  KVM permissions: {}",
+            usable_color, usable_icon, "\x1b[0m",
+            if kvm_usable { "readable" } else { "check user group" }
+        );
+    }
+
+    // Virtualization.framework check (macOS)
+    let vz_ok = cfg!(target_os = "macos");
+    if vz_ok {
+        let vz_icon = "✓";
+        println!("  \x1b[32m{}\x1b[0m  Virtualization.framework: available", vz_icon);
+    }
+
+    // Runtimes
+    println!("\n  Supported runtimes:");
+    for rt in RUNTIMES {
+        println!("    {:<10} versions: {} (default: {})", rt.name, rt.supported_versions.join(", "), rt.default_version);
+    }
+
+    if let Ok(cwd) = std::env::current_dir() {
+        println!("\n  Working directory: {:?}", cwd);
+    }
+
+    println!();
+    Ok(())
+}
+
+fn handle_validate(service: String) -> Result<()> {
+    let service_path = Path::new(&service);
+    let config_path = service_path.join("service.yaml");
+
+    if !config_path.exists() {
+        return Err(IgniteError::Config {
+            message: format!("service.yaml not found at {:?}", config_path),
+            source: None,
+        });
+    }
+
+    let content = fs::read_to_string(&config_path)?;
+    let config: ServiceConfig = serde_yaml::from_str(&content)?;
+
+    println!("\n  Validating service configuration...\n");
+
+    let mut errors = Vec::new();
+    let mut warnings = Vec::new();
+
+    // Validate name
+    let name_val = validate_service_name(&config.service.name);
+    if !name_val.valid {
+        errors.push(format!("Invalid service name: {}", name_val.error.unwrap_or_default()));
+    } else {
+        println!("  ✓ name: {}", config.service.name);
+    }
+
+    // Validate runtime
+    if !is_valid_runtime(&config.service.runtime) {
+        errors.push(format!("Invalid runtime '{}'. Supported: bun, node, deno, quickjs", config.service.runtime));
+    } else {
+        println!("  ✓ runtime: {}", config.service.runtime);
+    }
+
+    // Validate entry file exists
+    let entry_path = service_path.join(&config.service.entry);
+    if entry_path.exists() {
+        println!("  ✓ entry: {} (exists)", config.service.entry);
+    } else {
+        warnings.push(format!("Entry file '{}' not found", config.service.entry));
+    }
+
+    // Validate memory
+    if config.service.memory_mb == 0 {
+        errors.push("memoryMb must be > 0".to_string());
+    } else if config.service.memory_mb < 32 {
+        warnings.push(format!("memoryMb {} is very low, consider 64+", config.service.memory_mb));
+    } else {
+        println!("  ✓ memoryMb: {}", config.service.memory_mb);
+    }
+
+    // Validate timeout
+    if config.service.timeout_ms == 0 {
+        errors.push("timeoutMs must be > 0".to_string());
+    } else {
+        println!("  ✓ timeoutMs: {}", config.service.timeout_ms);
+    }
+
+    // Validate env
+    if let Some(ref env) = config.service.env {
+        println!("  ✓ env: {} variables", env.len());
+    }
+
+    // Check package.json
+    let pkg_path = service_path.join("package.json");
+    if pkg_path.exists() {
+        println!("  ✓ package.json: exists");
+    } else {
+        warnings.push("package.json not found (required for dependency installs)".to_string());
+    }
+
+    println!();
+    if !errors.is_empty() {
+        for e in &errors {
+            println!("  \x1b[31m✗ {}\x1b[0m", e);
+        }
+        return Err(IgniteError::Config {
+            message: format!("{} validation error(s)", errors.len()),
+            source: None,
+        });
+    }
+
+    if !warnings.is_empty() {
+        for w in &warnings {
+            println!("  \x1b[33m⚠ {}\x1b[0m", w);
+        }
+        println!();
+    }
+
+    println!("  \x1b[32m✓ Configuration is valid\x1b[0m\n");
+    Ok(())
+}
+
+fn handle_list() -> Result<()> {
+    println!("\n  SUPPORTED RUNTIMES\n");
+    println!("  {:<10} {:<30} {}", "RUNTIME", "VERSIONS", "DEFAULT");
+    println!("  {}", "─".repeat(55));
+
+    for rt in RUNTIMES {
+        println!(
+            "  {:<10} {:<30} {}",
+            rt.name,
+            rt.supported_versions.join(", "),
+            rt.default_version
+        );
+    }
+
+    println!("\n  Use `ignite init --runtime <name>` to create a service with a specific runtime.\n");
+    Ok(())
+}
+
+fn handle_logs(service: String, lines: usize) -> Result<()> {
+    let service_path = Path::new(&service);
+
+    // Check for audit output or console out
+    let audit_path = service_path.join("audit.json");
+    let console_path = service_path.join("console.log");
+
+    let has_audit = audit_path.exists();
+    let has_console = console_path.exists();
+
+    if !has_audit && !has_console {
+        println!("\n  No logs found in {:?}\n", service_path);
+        println!("  Run with --audit-output audit.json or --console-out console.log to generate logs.\n");
+        return Ok(());
+    }
+
+    if has_audit {
+        println!("\n  SECURITY AUDIT LOG\n");
+        let content = fs::read_to_string(&audit_path)?;
+        // Try to parse and show summary
+        if let Ok(audit) = serde_json::from_str::<serde_json::Value>(&content) {
+            if let Some(summary) = audit.get("summary") {
+                println!("  Network attempts: {}", summary.get("networkAttempts").and_then(|v| v.as_u64()).unwrap_or(0));
+                println!("  Network blocked:  {}", summary.get("networkBlocked").and_then(|v| v.as_u64()).unwrap_or(0));
+                println!("  FS reads:         {}", summary.get("filesystemReads").and_then(|v| v.as_u64()).unwrap_or(0));
+                println!("  FS writes:        {}", summary.get("filesystemWrites").and_then(|v| v.as_u64()).unwrap_or(0));
+                println!("  FS blocked:       {}", summary.get("filesystemBlocked").and_then(|v| v.as_u64()).unwrap_or(0));
+                println!("  Process spawns:   {}", summary.get("processSpawns").and_then(|v| v.as_u64()).unwrap_or(0));
+                println!("  Process blocked:  {}", summary.get("processBlocked").and_then(|v| v.as_u64()).unwrap_or(0));
+                println!("  Status:           {}", summary.get("overallStatus").and_then(|v| v.as_str()).unwrap_or("unknown"));
+            }
+
+            if let Some(events) = audit.get("events").and_then(|v| v.as_array()) {
+                let show = events.iter().rev().take(lines).collect::<Vec<_>>();
+                if !show.is_empty() {
+                    println!("\n  Last {} events:", show.len());
+                    for event in show.iter().rev() {
+                        let typ = event.get("type").and_then(|v| v.as_str()).unwrap_or("?");
+                        let action = event.get("action").and_then(|v| v.as_str()).unwrap_or("?");
+                        let target = event.get("target").and_then(|v| v.as_str()).unwrap_or("?");
+                        let allowed = event.get("allowed").and_then(|v| v.as_bool()).unwrap_or(true);
+                        let icon = if allowed { "✓" } else { "✗" };
+                        let color = if allowed { "\x1b[32m" } else { "\x1b[31m" };
+                        println!("    {}{}{}\x1b[0m {}: {} -> {}", color, icon, "\x1b[0m", typ, action, target);
+                    }
+                }
+            }
+        } else {
+            // Raw output
+            let all_lines: Vec<&str> = content.lines().collect();
+            let start = all_lines.len().saturating_sub(lines);
+            for line in &all_lines[start..] {
+                println!("  {}", line);
+            }
+        }
+        println!();
+    }
+
+    if has_console {
+        println!("\n  CONSOLE OUTPUT\n");
+        let content = fs::read_to_string(&console_path)?;
+        let all_lines: Vec<&str> = content.lines().collect();
+        let start = all_lines.len().saturating_sub(lines);
+        for line in &all_lines[start..] {
+            println!("  {}", line);
+        }
+        println!();
+    }
+
+    Ok(())
+}
+
+fn handle_version(verbose: bool) -> Result<()> {
+    println!("\n  ignite {}", env!("CARGO_PKG_VERSION"));
+
+    if verbose {
+        println!("  Binary:    {}", env!("CARGO_PKG_NAME"));
+        println!("  Edition:   2024");
+        println!("  Authors:   {}", option_env!("CARGO_PKG_AUTHORS").unwrap_or("unknown"));
+        println!("  License:   {}", option_env!("CARGO_PKG_LICENSE").unwrap_or("unknown"));
+        println!("  Repository: {}", option_env!("CARGO_PKG_REPOSITORY").unwrap_or("https://github.com/dev-dami/ignite"));
+
+        let build_time = option_env!("IGNITE_BUILD_TIME").unwrap_or("unknown");
+        let git_hash = option_env!("IGNITE_GIT_HASH").unwrap_or("unknown");
+        println!("  Built:     {}", build_time);
+        println!("  Git:       {}", git_hash);
+    }
+
+    println!();
+    Ok(())
+}
+
+struct TemplateInfo {
+    name: &'static str,
+    description: &'static str,
+    runtime: &'static str,
+    files: &'static [&'static str],
+}
+
+const BUILTIN_TEMPLATES: &[TemplateInfo] = &[
+    TemplateInfo {
+        name: "basic-bun",
+        description: "Minimal Bun TypeScript service",
+        runtime: "bun",
+        files: &["service.yaml", "package.json", "index.ts"],
+    },
+    TemplateInfo {
+        name: "basic-node",
+        description: "Minimal Node.js service",
+        runtime: "node",
+        files: &["service.yaml", "package.json", "index.js"],
+    },
+    TemplateInfo {
+        name: "basic-deno",
+        description: "Minimal Deno TypeScript service",
+        runtime: "deno",
+        files: &["service.yaml", "package.json", "index.ts"],
+    },
+    TemplateInfo {
+        name: "api-endpoint",
+        description: "HTTP API endpoint with JSON input/output",
+        runtime: "bun",
+        files: &["service.yaml", "package.json", "index.ts"],
+    },
+    TemplateInfo {
+        name: "worker",
+        description: "Background worker with queue processing",
+        runtime: "bun",
+        files: &["service.yaml", "package.json", "index.ts"],
+    },
+];
+
+fn handle_templates(command: Option<TemplatesCommand>) -> Result<()> {
+    match command {
+        Some(TemplatesCommand::List) | None => {
+            println!("\n  AVAILABLE TEMPLATES\n");
+            println!("  {:<20} {:<40} {}", "NAME", "DESCRIPTION", "RUNTIME");
+            println!("  {}", "─".repeat(65));
+
+            for tmpl in BUILTIN_TEMPLATES {
+                println!("  {:<20} {:<40} {}", tmpl.name, tmpl.description, tmpl.runtime);
+            }
+
+            // Check for user templates
+            let user_dir = dirs().map(|d| d.join("templates"));
+            if let Some(ref user_dir) = user_dir {
+                if user_dir.exists() {
+                    if let Ok(entries) = fs::read_dir(user_dir) {
+                        for entry in entries.flatten() {
+                            if entry.path().is_dir() {
+                                let name = entry.file_name().to_string_lossy().to_string();
+                                println!("  {:<20} {:<40} {}", name, "(user template)", "custom");
+                            }
+                        }
+                    }
+                }
+            }
+
+            println!("\n  Use `ignite init --runtime <name>` to create from defaults.");
+            println!("  User templates go in: ~/.ignite/templates/<name>/\n");
+            Ok(())
+        }
+        Some(TemplatesCommand::Show { name }) => {
+            if let Some(tmpl) = BUILTIN_TEMPLATES.iter().find(|t| t.name == name) {
+                println!("\n  Template: {}", tmpl.name);
+                println!("  Description: {}", tmpl.description);
+                println!("  Runtime: {}", tmpl.runtime);
+                println!("  Files: {}", tmpl.files.join(", "));
+                println!();
+            } else {
+                println!("\n  Template '{}' not found.\n", name);
+                println!("  Available templates:");
+                for tmpl in BUILTIN_TEMPLATES {
+                    println!("    - {}", tmpl.name);
+                }
+                println!();
+            }
+            Ok(())
+        }
+    }
+}
+
+fn dirs() -> Option<PathBuf> {
+    std::env::var("HOME")
+        .ok()
+        .map(|home| PathBuf::from(home).join(".ignite"))
+}
+
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt()
@@ -353,6 +740,24 @@ async fn main() -> Result<()> {
         }
         Commands::Preflight { service } => {
             handle_preflight(service)?;
+        }
+        Commands::Status => {
+            handle_status()?;
+        }
+        Commands::Validate { service } => {
+            handle_validate(service)?;
+        }
+        Commands::List => {
+            handle_list()?;
+        }
+        Commands::Logs { service, lines } => {
+            handle_logs(service, lines)?;
+        }
+        Commands::Version { verbose } => {
+            handle_version(verbose)?;
+        }
+        Commands::Templates { command } => {
+            handle_templates(command)?;
         }
         Commands::Serve {
             port,
