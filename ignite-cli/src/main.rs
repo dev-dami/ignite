@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use ignite_core::execution::{ExecuteOptions, execute_service};
 use ignite_core::report::{create_report, format_report_as_text};
-use ignite_core::runtime::{get_runtime_config, is_valid_runtime, RUNTIMES};
+use ignite_core::runtime::{RUNTIMES, get_runtime_config, is_valid_runtime};
 use ignite_shared::error::{IgniteError, Result};
 use ignite_shared::types::{PreflightStatus, RuntimeSpec, ServiceConfig};
 use ignite_shared::validation::validate_service_name;
@@ -352,21 +352,36 @@ fn handle_status() -> Result<()> {
     let kvm_color = if kvm_ok { "\x1b[32m" } else { "\x1b[31m" };
     println!(
         "  {}{}{}\x1b[0m  KVM: {}",
-        kvm_color, kvm_icon, "\x1b[0m",
-        if kvm_ok { "available" } else { "not found (/dev/kvm)" }
+        kvm_color,
+        kvm_icon,
+        "\x1b[0m",
+        if kvm_ok {
+            "available"
+        } else {
+            "not found (/dev/kvm)"
+        }
     );
 
     // Check if KVM is usable (permissions)
     if kvm_ok {
         let kvm_meta = fs::metadata("/dev/kvm");
-        let kvm_readable = kvm_meta.as_ref().map(|m| m.permissions().readonly()).unwrap_or(false);
+        let kvm_readable = kvm_meta
+            .as_ref()
+            .map(|m| m.permissions().readonly())
+            .unwrap_or(false);
         let kvm_usable = kvm_meta.is_ok() && kvm_readable;
         let usable_icon = if kvm_usable { "✓" } else { "⚠" };
         let usable_color = if kvm_usable { "\x1b[32m" } else { "\x1b[33m" };
         println!(
             "  {}{}{}\x1b[0m  KVM permissions: {}",
-            usable_color, usable_icon, "\x1b[0m",
-            if kvm_usable { "readable" } else { "check user group" }
+            usable_color,
+            usable_icon,
+            "\x1b[0m",
+            if kvm_usable {
+                "readable"
+            } else {
+                "check user group"
+            }
         );
     }
 
@@ -374,13 +389,21 @@ fn handle_status() -> Result<()> {
     let vz_ok = cfg!(target_os = "macos");
     if vz_ok {
         let vz_icon = "✓";
-        println!("  \x1b[32m{}\x1b[0m  Virtualization.framework: available", vz_icon);
+        println!(
+            "  \x1b[32m{}\x1b[0m  Virtualization.framework: available",
+            vz_icon
+        );
     }
 
     // Runtimes
     println!("\n  Supported runtimes:");
     for rt in RUNTIMES {
-        println!("    {:<10} versions: {} (default: {})", rt.name, rt.supported_versions.join(", "), rt.default_version);
+        println!(
+            "    {:<10} versions: {} (default: {})",
+            rt.name,
+            rt.supported_versions.join(", "),
+            rt.default_version
+        );
     }
 
     if let Ok(cwd) = std::env::current_dir() {
@@ -413,14 +436,20 @@ fn handle_validate(service: String) -> Result<()> {
     // Validate name
     let name_val = validate_service_name(&config.service.name);
     if !name_val.valid {
-        errors.push(format!("Invalid service name: {}", name_val.error.unwrap_or_default()));
+        errors.push(format!(
+            "Invalid service name: {}",
+            name_val.error.unwrap_or_default()
+        ));
     } else {
         println!("  ✓ name: {}", config.service.name);
     }
 
     // Validate runtime
     if !is_valid_runtime(&config.service.runtime) {
-        errors.push(format!("Invalid runtime '{}'. Supported: bun, node, deno, quickjs", config.service.runtime));
+        errors.push(format!(
+            "Invalid runtime '{}'. Supported: bun, node, deno, quickjs",
+            config.service.runtime
+        ));
     } else {
         println!("  ✓ runtime: {}", config.service.runtime);
     }
@@ -437,7 +466,10 @@ fn handle_validate(service: String) -> Result<()> {
     if config.service.memory_mb == 0 {
         errors.push("memoryMb must be > 0".to_string());
     } else if config.service.memory_mb < 32 {
-        warnings.push(format!("memoryMb {} is very low, consider 64+", config.service.memory_mb));
+        warnings.push(format!(
+            "memoryMb {} is very low, consider 64+",
+            config.service.memory_mb
+        ));
     } else {
         println!("  ✓ memoryMb: {}", config.service.memory_mb);
     }
@@ -498,7 +530,9 @@ fn handle_list() -> Result<()> {
         );
     }
 
-    println!("\n  Use `ignite init --runtime <name>` to create a service with a specific runtime.\n");
+    println!(
+        "\n  Use `ignite init --runtime <name>` to create a service with a specific runtime.\n"
+    );
     Ok(())
 }
 
@@ -514,7 +548,9 @@ fn handle_logs(service: String, lines: usize) -> Result<()> {
 
     if !has_audit && !has_console {
         println!("\n  No logs found in {:?}\n", service_path);
-        println!("  Run with --audit-output audit.json or --console-out console.log to generate logs.\n");
+        println!(
+            "  Run with --audit-output audit.json or --console-out console.log to generate logs.\n"
+        );
         return Ok(());
     }
 
@@ -524,14 +560,62 @@ fn handle_logs(service: String, lines: usize) -> Result<()> {
         // Try to parse and show summary
         if let Ok(audit) = serde_json::from_str::<serde_json::Value>(&content) {
             if let Some(summary) = audit.get("summary") {
-                println!("  Network attempts: {}", summary.get("networkAttempts").and_then(|v| v.as_u64()).unwrap_or(0));
-                println!("  Network blocked:  {}", summary.get("networkBlocked").and_then(|v| v.as_u64()).unwrap_or(0));
-                println!("  FS reads:         {}", summary.get("filesystemReads").and_then(|v| v.as_u64()).unwrap_or(0));
-                println!("  FS writes:        {}", summary.get("filesystemWrites").and_then(|v| v.as_u64()).unwrap_or(0));
-                println!("  FS blocked:       {}", summary.get("filesystemBlocked").and_then(|v| v.as_u64()).unwrap_or(0));
-                println!("  Process spawns:   {}", summary.get("processSpawns").and_then(|v| v.as_u64()).unwrap_or(0));
-                println!("  Process blocked:  {}", summary.get("processBlocked").and_then(|v| v.as_u64()).unwrap_or(0));
-                println!("  Status:           {}", summary.get("overallStatus").and_then(|v| v.as_str()).unwrap_or("unknown"));
+                println!(
+                    "  Network attempts: {}",
+                    summary
+                        .get("networkAttempts")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(0)
+                );
+                println!(
+                    "  Network blocked:  {}",
+                    summary
+                        .get("networkBlocked")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(0)
+                );
+                println!(
+                    "  FS reads:         {}",
+                    summary
+                        .get("filesystemReads")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(0)
+                );
+                println!(
+                    "  FS writes:        {}",
+                    summary
+                        .get("filesystemWrites")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(0)
+                );
+                println!(
+                    "  FS blocked:       {}",
+                    summary
+                        .get("filesystemBlocked")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(0)
+                );
+                println!(
+                    "  Process spawns:   {}",
+                    summary
+                        .get("processSpawns")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(0)
+                );
+                println!(
+                    "  Process blocked:  {}",
+                    summary
+                        .get("processBlocked")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(0)
+                );
+                println!(
+                    "  Status:           {}",
+                    summary
+                        .get("overallStatus")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("unknown")
+                );
             }
 
             if let Some(events) = audit.get("events").and_then(|v| v.as_array()) {
@@ -542,10 +626,16 @@ fn handle_logs(service: String, lines: usize) -> Result<()> {
                         let typ = event.get("type").and_then(|v| v.as_str()).unwrap_or("?");
                         let action = event.get("action").and_then(|v| v.as_str()).unwrap_or("?");
                         let target = event.get("target").and_then(|v| v.as_str()).unwrap_or("?");
-                        let allowed = event.get("allowed").and_then(|v| v.as_bool()).unwrap_or(true);
+                        let allowed = event
+                            .get("allowed")
+                            .and_then(|v| v.as_bool())
+                            .unwrap_or(true);
                         let icon = if allowed { "✓" } else { "✗" };
                         let color = if allowed { "\x1b[32m" } else { "\x1b[31m" };
-                        println!("    {}{}{}\x1b[0m {}: {} -> {}", color, icon, "\x1b[0m", typ, action, target);
+                        println!(
+                            "    {}{}{}\x1b[0m {}: {} -> {}",
+                            color, icon, "\x1b[0m", typ, action, target
+                        );
                     }
                 }
             }
@@ -580,9 +670,18 @@ fn handle_version(verbose: bool) -> Result<()> {
     if verbose {
         println!("  Binary:    {}", env!("CARGO_PKG_NAME"));
         println!("  Edition:   2024");
-        println!("  Authors:   {}", option_env!("CARGO_PKG_AUTHORS").unwrap_or("unknown"));
-        println!("  License:   {}", option_env!("CARGO_PKG_LICENSE").unwrap_or("unknown"));
-        println!("  Repository: {}", option_env!("CARGO_PKG_REPOSITORY").unwrap_or("https://github.com/dev-dami/ignite"));
+        println!(
+            "  Authors:   {}",
+            option_env!("CARGO_PKG_AUTHORS").unwrap_or("unknown")
+        );
+        println!(
+            "  License:   {}",
+            option_env!("CARGO_PKG_LICENSE").unwrap_or("unknown")
+        );
+        println!(
+            "  Repository: {}",
+            option_env!("CARGO_PKG_REPOSITORY").unwrap_or("https://github.com/dev-dami/ignite")
+        );
 
         let build_time = option_env!("IGNITE_BUILD_TIME").unwrap_or("unknown");
         let git_hash = option_env!("IGNITE_GIT_HASH").unwrap_or("unknown");
@@ -642,7 +741,10 @@ fn handle_templates(command: Option<TemplatesCommand>) -> Result<()> {
             println!("  {}", "─".repeat(65));
 
             for tmpl in BUILTIN_TEMPLATES {
-                println!("  {:<20} {:<40} {}", tmpl.name, tmpl.description, tmpl.runtime);
+                println!(
+                    "  {:<20} {:<40} {}",
+                    tmpl.name, tmpl.description, tmpl.runtime
+                );
             }
 
             // Check for user templates
