@@ -258,6 +258,14 @@ pub fn download_kernel(ignite_dir: &Path) -> Result<PathBuf> {
     } else {
         Some(PathBuf::from(format!("/boot/vmlinuz-{}", kernel_release)))
     })
+    .chain(if kernel_release.is_empty() {
+        None
+    } else {
+        Some(PathBuf::from(format!(
+            "/usr/lib/modules/{}/vmlinuz",
+            kernel_release
+        )))
+    })
     .chain([
         PathBuf::from("/boot/bzImage"),
         PathBuf::from("/boot/kernel"),
